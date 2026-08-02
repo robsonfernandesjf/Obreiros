@@ -1475,129 +1475,8 @@ function imprimirPdf(){
       .rok{background:#D4EDDA!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       .res th{background:#1B3A6B!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     }
-  </style>
-<style id="v4-operacional-css">
-/* CENTRAL DE CUMPRIMENTO V4 */
-.cp4-layout{display:grid;grid-template-columns:minmax(290px,.72fr) minmax(0,1.28fr);gap:16px}
-.cp4-toolbar{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
-.cp4-group{border:1px solid var(--bd);border-radius:11px;padding:12px;margin-bottom:8px;cursor:pointer;background:#fff;transition:.15s}
-.cp4-group:hover{background:#f8f7f4}.cp4-group.active{border-color:var(--am);box-shadow:0 0 0 3px rgba(46,109,180,.1)}
-.cp4-title{display:flex;justify-content:space-between;gap:10px;font-weight:650;font-size:13px}.cp4-meta{font-size:11px;color:#777;margin-top:5px;display:flex;gap:10px;flex-wrap:wrap}
-.cp4-progress{height:6px;background:#eee;border-radius:99px;overflow:hidden;margin-top:9px}.cp4-progress span{display:block;height:100%;background:var(--am)}
-.cp4-team{border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:12px}.cp4-team-h{background:#111;color:#fff;padding:10px 13px;display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:600}
-.cp4-person{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid #eee}.cp4-person:first-child{border-top:0}
-.cp4-person-name{font-weight:600;font-size:13px}.cp4-person-audit{font-size:10px;color:#999;margin-top:3px}
-.cp4-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.cp4-action{border:1px solid #ddd;background:#fff;border-radius:7px;padding:6px 8px;font-size:11px;cursor:pointer}.cp4-action:hover{background:#f3f3f3}
-.cp4-action.ok.sel{background:#dcfce7;border-color:#86c795;color:#166534}.cp4-action.jus.sel{background:#fff3cd;border-color:#e6c66b;color:#7a5700}.cp4-action.fal.sel{background:#fee2e2;border-color:#efaaaa;color:#991b1b}.cp4-action.sub.sel{background:#dbeafe;border-color:#91b8ee;color:#1d4f91}
-.cp4-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}.cp4-sum{background:#f5f3ef;border:1px solid #e4e0d8;border-radius:9px;padding:9px;text-align:center}.cp4-sum b{display:block;font-size:20px}.cp4-sum span{font-size:9px;text-transform:uppercase;color:#777}
-.cp4-mode{background:#eef4fb;border:1px solid #bad3f0;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px}.cp4-final{background:#f0fdf4;border:1px solid #a7d7b1;border-radius:10px;padding:10px 12px;margin-bottom:12px;color:#166534;font-size:12px}
-.cp4-pending{background:#fff8e1;border:1px solid #f0cf82;border-radius:10px;padding:10px 12px;margin-bottom:12px;color:#795548;font-size:12px}
-.cp4-leaders{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cp4-leader{border:1px solid var(--bd);border-radius:9px;padding:10px;font-size:12px}.cp4-leader strong{display:block}.cp4-read{color:#166534}.cp4-unread{color:#991b1b}
-.daily-trend{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px}.daily-trend div{background:#f5f3ef;border-radius:8px;padding:8px;text-align:center;font-size:11px}.daily-critical{background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;padding:10px 12px;margin-top:10px;font-size:12px;color:#9f1239}
-@media(max-width:900px){.cp4-layout{grid-template-columns:1fr}.cp4-toolbar{grid-template-columns:1fr 1fr}.cp4-toolbar button{grid-column:span 2}.cp4-leaders{grid-template-columns:1fr 1fr}}
-@media(max-width:600px){.cp4-summary{grid-template-columns:repeat(2,1fr)}.cp4-person{grid-template-columns:1fr}.cp4-actions{justify-content:flex-start}.cp4-toolbar{grid-template-columns:1fr}.cp4-toolbar button{grid-column:auto}.cp4-leaders{grid-template-columns:1fr}}
-</style>
+  </style></head><body>${conteudo}</body></html>`);
 
-</head>
-  <body>${conteudo}
-<script id="v4-operacional-js">
-// ===== MÓDULO 1: CENTRAL DE CUMPRIMENTO AGRUPADA =====
-let CP4_GRUPOS=[],CP4_ATIVO=null,CP4_MODO_CULTO=false;
-function cp4IsoDataBr(v){if(!v)return'';const p=v.split('/');return p.length===3?`${p[2]}-${p[1]}-${p[0]}`:'';}
-function cp4TipoOrdem(t){return {dom_manha:1,dom_noite:2,terca:3,quinta:4}[t]||9;}
-function cp4Agrupar(eventos){
-  const m={};
-  eventos.forEach(ev=>{
-    const k=`${ev.data}|${ev.tipo}`;
-    if(!m[k])m[k]={key:k,data:ev.data,tipo:ev.tipo,titulo:ev.titulo,mes:ev.mes,equipes:[],pessoas:[]};
-    m[k].equipes.push(ev);ev.pessoas.forEach(nome=>m[k].pessoas.push({...ev,nome}));
-  });
-  return Object.values(m).sort((a,b)=>{const d=cpDataValor(b.data)-cpDataValor(a.data);return d||cp4TipoOrdem(a.tipo)-cp4TipoOrdem(b.tipo)});
-}
-function cp4Registro(item){return (db.cumprimentos||[]).find(r=>r.eventKey===item.key&&nomeIgual(r.nome,item.nome));}
-function cp4Selecionar(enc){CP4_ATIVO=cpDec(enc);renderCumprimento();}
-function cp4Filtro(){return {eq:document.getElementById('cp4-equipe')?.value||'',status:document.getElementById('cp4-status')?.value||'todos',ini:document.getElementById('cp4-ini')?.value||'',fim:document.getElementById('cp4-fim')?.value||'',busca:(document.getElementById('cp4-busca')?.value||'').trim().toLocaleLowerCase('pt-BR')};}
-function cp4GrupoFinalizado(g){return (db.cultosFinalizados||[]).find(x=>x.key===g.key);}
-function cp4Registrar(grupoKey,eventKey,nome,status){
-  const g=CP4_GRUPOS.find(x=>x.key===grupoKey), item=g?.pessoas.find(x=>x.key===eventKey&&nomeIgual(x.nome,nome));if(!item)return;
-  if(cp4GrupoFinalizado(g)&&!confirm('Este culto já foi finalizado. Reabrir e registrar uma alteração auditada?'))return;
-  if(cp4GrupoFinalizado(g))db.cultosFinalizados=(db.cultosFinalizados||[]).filter(x=>x.key!==g.key);
-  let substituto='';if(status==='sub'){substituto=prompt(`Quem substituiu ${nome}?`)?.trim()||'';if(!substituto)return;}
-  db.cumprimentos=db.cumprimentos||[];const i=db.cumprimentos.findIndex(r=>r.eventKey===eventKey&&nomeIgual(r.nome,nome));
-  const reg={eventKey,nome,status,substituto,equipeCode:item.code,equipeNome:item.equipe,culto:item.titulo,data:item.data,mes:item.mes,registradoPor:EQ_NOME||EQ,registradoEm:new Date().toLocaleString('pt-BR'),alteracoes:[...(i>=0?(db.cumprimentos[i].alteracoes||[]):[]),{status,por:EQ_NOME||EQ,em:new Date().toLocaleString('pt-BR')} ]};
-  if(i>=0)db.cumprimentos[i]=reg;else db.cumprimentos.push(reg);save();renderCumprimento();
-}
-function cp4Todos(grupoKey){const g=CP4_GRUPOS.find(x=>x.key===grupoKey);if(!g||!confirm(`Marcar os ${g.pessoas.length} escalados de todas as equipes como cumpriram?`))return;g.pessoas.forEach(i=>cp4SetSemRender(i,'ok'));save();renderCumprimento();toast('Todos marcados como cumpriram. Revise as exceções.');}
-function cp4SetSemRender(item,status){db.cumprimentos=db.cumprimentos||[];const i=db.cumprimentos.findIndex(r=>r.eventKey===item.key&&nomeIgual(r.nome,item.nome));const reg={eventKey:item.key,nome:item.nome,status,substituto:'',equipeCode:item.code,equipeNome:item.equipe,culto:item.titulo,data:item.data,mes:item.mes,registradoPor:EQ_NOME||EQ,registradoEm:new Date().toLocaleString('pt-BR')};if(i>=0)db.cumprimentos[i]=reg;else db.cumprimentos.push(reg);}
-function cp4Finalizar(grupoKey){const g=CP4_GRUPOS.find(x=>x.key===grupoKey);if(!g)return;const pend=g.pessoas.filter(x=>!cp4Registro(x));if(pend.length){toast(`Ainda existem ${pend.length} pendente(s).`,'er');return;}if(!confirm('Finalizar a conferência deste culto? Alterações posteriores ficarão auditadas.'))return;db.cultosFinalizados=db.cultosFinalizados||[];db.cultosFinalizados=db.cultosFinalizados.filter(x=>x.key!==g.key);db.cultosFinalizados.push({key:g.key,data:g.data,tipo:g.tipo,finalizadoPor:EQ_NOME||EQ,finalizadoEm:new Date().toLocaleString('pt-BR')});save();renderCumprimento();toast('Culto finalizado com sucesso.');}
-function cp4AlternarModo(){CP4_MODO_CULTO=!CP4_MODO_CULTO;renderCumprimento();}
-async function carregarCumprimento(){
-  if(!IS_ADMIN){toast('Acesso exclusivo do administrador.','er');return;}
-  try{if(sb){const {data,error}=await sb.rpc('listar_todas_equipes',{p_code:EQ,p_senha:EQ_SENHA});if(error)throw error;CP_EQS=(data||[]).map(r=>({code:r.code,nome:r.nome,dados:{...defDb(),...(r.dados||{})}}));}else CP_EQS=[{code:EQ,nome:EQ_NOME,dados:db}];}
-  catch(err){console.error(err);CP_EQS=[{code:EQ,nome:EQ_NOME,dados:db}];toast('Não foi possível carregar todas as equipes.','er');}
-  CP_EVENTOS=CP_EQS.flatMap(x=>cpEscalasParaEventos(x.code,x.nome,x.dados));CP4_GRUPOS=cp4Agrupar(CP_EVENTOS);
-  const sel=document.getElementById('cp4-equipe');if(sel)sel.innerHTML='<option value="">Todas as equipes</option>'+CP_EQS.map(x=>`<option value="${e(x.code)}">${e(x.nome)}</option>`).join('');
-  if(!CP4_ATIVO&&CP4_GRUPOS.length)CP4_ATIVO=CP4_GRUPOS[0].key;renderCumprimento();
-}
-function cp4ResumoGrupo(g){const r=g.pessoas.map(cp4Registro);return {ok:r.filter(x=>x?.status==='ok').length,jus:r.filter(x=>x?.status==='jus').length,fal:r.filter(x=>x?.status==='fal').length,sub:r.filter(x=>x?.status==='sub').length,pen:r.filter(x=>!x).length};}
-function cp4Liderancas(){
-  const el=document.getElementById('cp4-lideres');if(!el)return;const hoje=new Date().toISOString().slice(0,10);
-  el.innerHTML=CP_EQS.map(x=>{const cs=x.dados?.cienciasLider||[];const ult=cs.sort((a,b)=>String(b.em).localeCompare(String(a.em)))[0];return `<div class="cp4-leader"><strong>${e(x.nome)}</strong><span class="${ult?'cp4-read':'cp4-unread'}">${ult?'✓ Última ciência: '+e(new Date(ult.em).toLocaleString('pt-BR')):'✕ Sem ciência registrada'}</span></div>`;}).join('')||'<div class="comp-empty">Nenhuma equipe carregada.</div>';
-}
-function renderCumprimento(){
-  const box=document.getElementById('cp4-grupos');if(!box)return;const f=cp4Filtro();let gs=CP4_GRUPOS.filter(g=>{
-    const dt=cp4IsoDataBr(g.data);if(f.ini&&dt<f.ini)return false;if(f.fim&&dt>f.fim)return false;
-    const ps=g.pessoas.filter(x=>(!f.eq||x.code===f.eq)&&(!f.busca||x.nome.toLocaleLowerCase('pt-BR').includes(f.busca)));if(!ps.length)return false;
-    const s=cp4ResumoGrupo({...g,pessoas:ps});return f.status==='pendentes'?s.pen>0:f.status==='finalizados'?!!cp4GrupoFinalizado(g):f.status==='ocorrencias'?(s.jus+s.fal+s.sub)>0:true;
-  });
-  const all=CP4_GRUPOS.flatMap(g=>g.pessoas), rr=all.map(cp4Registro).filter(Boolean);const ok=rr.filter(r=>r.status==='ok'||r.status==='sub').length,total=rr.length;
-  document.getElementById('cp4-kpis').innerHTML=`<div class="comp-kpi"><div class="v">${total?Math.round(ok/total*100)+'%':'—'}</div><div class="l">Cumprimento geral</div></div><div class="comp-kpi"><div class="v" style="color:var(--vd)">${rr.filter(r=>r.status==='ok').length}</div><div class="l">Cumpriram</div></div><div class="comp-kpi"><div class="v" style="color:#a16207">${rr.filter(r=>r.status==='jus').length}</div><div class="l">Justificadas</div></div><div class="comp-kpi"><div class="v" style="color:var(--rd)">${rr.filter(r=>r.status==='fal').length}</div><div class="l">Injustificadas</div></div>`;
-  box.innerHTML=gs.map(g=>{const s=cp4ResumoGrupo(g),feito=g.pessoas.length-s.pen,pct=Math.round(feito/g.pessoas.length*100),fin=cp4GrupoFinalizado(g);return `<div class="cp4-group ${CP4_ATIVO===g.key?'active':''}" onclick="cp4Selecionar('${cpEnc(g.key)}')"><div class="cp4-title"><span>${e(g.titulo)} · ${e(g.data)}</span><span>${fin?'✓ Finalizado':s.pen?'⏳ Pendente':'Pronto'}</span></div><div class="cp4-meta"><span>${g.equipes.length} equipe(s)</span><span>${g.pessoas.length} escalados</span><span>${feito}/${g.pessoas.length} lançados</span></div><div class="cp4-progress"><span style="width:${pct}%"></span></div></div>`;}).join('')||'<div class="comp-empty">Nenhum culto encontrado.</div>';
-  const g=CP4_GRUPOS.find(x=>x.key===CP4_ATIVO),det=document.getElementById('cp4-detalhe');if(!g){det.innerHTML='<div class="comp-empty">Selecione um culto.</div>';cp4Liderancas();return;}
-  const vis=g.pessoas.filter(x=>(!f.eq||x.code===f.eq)&&(!f.busca||x.nome.toLocaleLowerCase('pt-BR').includes(f.busca))),s=cp4ResumoGrupo({...g,pessoas:vis}),fin=cp4GrupoFinalizado(g);
-  const equipes=[...new Set(vis.map(x=>x.code))].map(code=>({code,nome:vis.find(x=>x.code===code).equipe,pessoas:vis.filter(x=>x.code===code)}));
-  det.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px"><div><h3 style="font-size:17px">${e(g.titulo)} · ${e(g.data)}</h3><div style="font-size:12px;color:#777">${g.equipes.length} equipes reunidas em uma única conferência</div></div><div class="row"><button class="btn ${CP4_MODO_CULTO?'pr':''} sm" onclick="cp4AlternarModo()"><i class="ti ti-live-photo"></i> Modo culto</button><button class="btn su sm" onclick="cp4Todos('${cpEnc(g.key)}')"><i class="ti ti-checks"></i> Todos cumpriram</button></div></div>
-  ${fin?`<div class="cp4-final"><strong>Conferência finalizada</strong> por ${e(fin.finalizadoPor)} em ${e(fin.finalizadoEm)}.</div>`:`<div class="cp4-pending"><strong>Conferência aberta.</strong> Registre todos os resultados antes de finalizar.</div>`}
-  ${CP4_MODO_CULTO?'<div class="cp4-mode"><strong>Modo Culto ativo:</strong> toque em “Chegou” conforme cada pessoa chega. Depois, altere somente as exceções.</div>':''}
-  <div class="cp4-summary"><div class="cp4-sum"><b>${s.ok}</b><span>Cumpriram</span></div><div class="cp4-sum"><b>${s.jus}</b><span>Justificadas</span></div><div class="cp4-sum"><b>${s.fal}</b><span>Injustificadas</span></div><div class="cp4-sum"><b>${s.sub}</b><span>Substituições</span></div><div class="cp4-sum"><b>${s.pen}</b><span>Pendentes</span></div></div>
-  ${equipes.map(eq=>`<div class="cp4-team"><div class="cp4-team-h"><span>${e(eq.nome)}</span><span>${eq.pessoas.length} escalados</span></div>${eq.pessoas.map(i=>{const r=cp4Registro(i);return `<div class="cp4-person"><div><div class="cp4-person-name">${e(i.nome)}</div><div class="cp4-person-audit">${r?e(cpStatusLabel(r.status)+(r.substituto?' por '+r.substituto:''))+' · '+e(r.registradoPor)+' · '+e(r.registradoEm):'Aguardando lançamento'}</div></div><div class="cp4-actions"><button class="cp4-action ok ${r?.status==='ok'?'sel':''}" onclick="cp4Registrar('${cpEnc(g.key)}','${cpEnc(i.key)}','${cpEnc(i.nome)}','ok')">${CP4_MODO_CULTO?'✓ Chegou':'✓ Cumpriu'}</button><button class="cp4-action jus ${r?.status==='jus'?'sel':''}" onclick="cp4Registrar('${cpEnc(g.key)}','${cpEnc(i.key)}','${cpEnc(i.nome)}','jus')">Justificada</button><button class="cp4-action fal ${r?.status==='fal'?'sel':''}" onclick="cp4Registrar('${cpEnc(g.key)}','${cpEnc(i.key)}','${cpEnc(i.nome)}','fal')">Injustificada</button><button class="cp4-action sub ${r?.status==='sub'?'sel':''}" onclick="cp4Registrar('${cpEnc(g.key)}','${cpEnc(i.key)}','${cpEnc(i.nome)}','sub')">Substituído</button></div></div>`}).join('')}</div>`).join('')}
-  <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn pr" onclick="cp4Finalizar('${cpEnc(g.key)}')"><i class="ti ti-lock-check"></i> Finalizar conferência</button></div>`;
-  cp4Liderancas();
-}
-function cp4Registrar(g,e1,n,s){cp4Registrar(cpDec(g),cpDec(e1),cpDec(n),s);}
-
-// ===== MÓDULO 2: DIÁRIO DA LIDERANÇA =====
-function dailyKey(){return `daily_ack_${EQ}_${DAILY_DATA}`;}
-function dailyMostrar(){
-  if(IS_ADMIN)return;const eventos=cpEscalasParaEventos(EQ,EQ_NOME||EQ,db).filter(x=>cpDataValor(x.data)<=Date.now());if(!eventos.length)return;
-  const datas=[...new Set(eventos.map(x=>x.data))].sort((a,b)=>cpDataValor(b)-cpDataValor(a));DAILY_DATA=datas[0];DAILY_EVENTOS=eventos.filter(x=>x.data===DAILY_DATA);
-  const ja=(db.cienciasLider||[]).some(x=>x.dataCulto===DAILY_DATA);if(ja)return;
-  const regs=(db.cumprimentos||[]).filter(r=>DAILY_EVENTOS.some(ev=>ev.key===r.eventKey));const cont={ok:0,jus:0,fal:0,sub:0,pen:0};
-  DAILY_EVENTOS.forEach(ev=>ev.pessoas.forEach(n=>{const r=regs.find(x=>x.eventKey===ev.key&&nomeIgual(x.nome,n));cont[r?.status||'pen']++;}));
-  const lim=Date.now()-30*86400000,r30=(db.cumprimentos||[]).filter(r=>cpDataValor(r.data)>=lim),d30={ok:r30.filter(r=>r.status==='ok').length,jus:r30.filter(r=>r.status==='jus').length,fal:r30.filter(r=>r.status==='fal').length,sub:r30.filter(r=>r.status==='sub').length};
-  const ult4=datas.slice(0,4).reverse().map(d=>{const evs=eventos.filter(x=>x.data===d),tot=evs.reduce((a,x)=>a+x.pessoas.length,0),oks=evs.reduce((a,ev)=>a+ev.pessoas.filter(n=>{const r=(db.cumprimentos||[]).find(x=>x.eventKey===ev.key&&nomeIgual(x.nome,n));return r?.status==='ok'||r?.status==='sub'}).length,0);return {d,p:tot?Math.round(oks/tot*100):0};});
-  const ativos=(db.disciplinas||[]).filter(d=>disciplinaBloqueiaNome(d.nome));
-  document.getElementById('daily-title').textContent=`Diário da Liderança · ${EQ_NOME||EQ}`;document.getElementById('daily-subtitle').textContent=`Último dia de culto: ${DAILY_DATA}`;
-  document.getElementById('daily-body').innerHTML=`<div class="daily-kpis"><div class="daily-kpi"><b>${cont.ok}</b><span>Cumpriram</span></div><div class="daily-kpi"><b>${cont.jus}</b><span>Justificadas</span></div><div class="daily-kpi"><b>${cont.fal}</b><span>Injustificadas</span></div><div class="daily-kpi"><b>${cont.sub}</b><span>Substituições</span></div></div>
-  ${cont.pen?`<div class="daily-critical"><strong>Atenção:</strong> ${cont.pen} lançamento(s) do último culto ainda estão pendentes na administração.</div>`:''}
-  ${DAILY_EVENTOS.map(ev=>`<div class="daily-event"><div class="daily-event-title"><span>${e(ev.titulo)}</span><span>${ev.pessoas.length} escalados</span></div>${ev.pessoas.map(n=>{const r=regs.find(x=>x.eventKey===ev.key&&nomeIgual(x.nome,n)),st=r?.status||'pen';return `<div class="daily-person"><span>${e(n)}</span><span class="daily-status ${st}">${e(r?cpStatusLabel(st)+(r.substituto?' por '+r.substituto:''):'Pendente de conferência')}</span></div>`}).join('')}</div>`).join('')}
-  ${ativos.length?`<div class="daily-critical"><strong>Em disciplina:</strong> ${ativos.map(d=>e(d.nome)+' até '+dcFmt(d.fim)).join(' · ')}</div>`:''}
-  <div class="daily-30"><strong>Últimos 30 dias</strong><br>Cumprimentos: ${d30.ok} · Justificadas: ${d30.jus} · Injustificadas: ${d30.fal} · Substituições: ${d30.sub}</div>
-  <div class="daily-trend">${ult4.map(x=>`<div><strong>${x.p}%</strong><br>${e(x.d.slice(0,5))}</div>`).join('')}</div>`;
-  document.getElementById('daily-open').style.display='none';document.getElementById('daily-splash').classList.add('show');
-}
-function dailyRegistrarCiencia(){db.cienciasLider=db.cienciasLider||[];db.cienciasLider.push({dataCulto:DAILY_DATA,em:new Date().toISOString(),lider:EQ_NOME||EQ,resumo:{eventos:DAILY_EVENTOS.length}});save();document.getElementById('daily-splash').classList.remove('show');toast('Ciência registrada.');}
-function dailyAbrirDetalhes(){dailyRegistrarCiencia();}
-
-function setupOperacionalV4(){
-  const pg=document.getElementById('pg-cumprimento');if(pg)pg.innerHTML=`<div class="comp-kpis" id="cp4-kpis"></div><div class="card"><div class="ct"><i class="ti ti-filter"></i> Central de cumprimento por culto</div><div class="cp4-toolbar"><div><div class="sl">Equipe</div><select id="cp4-equipe" onchange="renderCumprimento()"><option value="">Todas</option></select></div><div><div class="sl">Situação</div><select id="cp4-status" onchange="renderCumprimento()"><option value="todos">Todos</option><option value="pendentes">Pendentes</option><option value="finalizados">Finalizados</option><option value="ocorrencias">Com ocorrências</option></select></div><div><div class="sl">Data inicial</div><input type="date" id="cp4-ini" onchange="renderCumprimento()"></div><div><div class="sl">Data final</div><input type="date" id="cp4-fim" onchange="renderCumprimento()"></div><button class="btn" onclick="carregarCumprimento()"><i class="ti ti-refresh"></i> Atualizar</button></div><div style="margin-top:10px"><input id="cp4-busca" placeholder="Pesquisar obreiro..." oninput="renderCumprimento()"></div></div><div class="cp4-layout"><div><div class="card"><div class="ct"><i class="ti ti-calendar-event"></i> Cultos</div><div id="cp4-grupos"><div class="comp-empty">Carregando...</div></div></div><div class="card"><div class="ct"><i class="ti ti-eye-check"></i> Acompanhamento dos líderes</div><div id="cp4-lideres" class="cp4-leaders"></div></div></div><div class="card"><div id="cp4-detalhe"><div class="comp-empty">Selecione um culto.</div></div></div></div>`;
-}
-setupOperacionalV4();
-// Ao usar a rota /cumprimento, abrir diretamente a central após o login.
-const _loginV4=login;login=async function(){await _loginV4();if(IS_ADMIN&&location.pathname.replace(/\/$/,'').endsWith('/cumprimento')){setTimeout(()=>ir('cumprimento'),300);}};
-</script>
-
-</body></html>`);
   w.document.close();
   setTimeout(()=>w.print(),600);
 }
@@ -2238,7 +2117,7 @@ function cp4Registro(item){return (db.cumprimentos||[]).find(r=>r.eventKey===ite
 function cp4Selecionar(enc){CP4_ATIVO=cpDec(enc);renderCumprimento();}
 function cp4Filtro(){return {eq:document.getElementById('cp4-equipe')?.value||'',status:document.getElementById('cp4-status')?.value||'todos',ini:document.getElementById('cp4-ini')?.value||'',fim:document.getElementById('cp4-fim')?.value||'',busca:(document.getElementById('cp4-busca')?.value||'').trim().toLocaleLowerCase('pt-BR')};}
 function cp4GrupoFinalizado(g){return (db.cultosFinalizados||[]).find(x=>x.key===g.key);}
-function cp4Registrar(grupoKey,eventKey,nome,status){
+function cp4RegistrarCore(grupoKey,eventKey,nome,status){
   const g=CP4_GRUPOS.find(x=>x.key===grupoKey), item=g?.pessoas.find(x=>x.key===eventKey&&nomeIgual(x.nome,nome));if(!item)return;
   if(cp4GrupoFinalizado(g)&&!confirm('Este culto já foi finalizado. Reabrir e registrar uma alteração auditada?'))return;
   if(cp4GrupoFinalizado(g))db.cultosFinalizados=(db.cultosFinalizados||[]).filter(x=>x.key!==g.key);
@@ -2284,7 +2163,7 @@ function renderCumprimento(){
   <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn pr" onclick="cp4Finalizar('${cpEnc(g.key)}')"><i class="ti ti-lock-check"></i> Finalizar conferência</button></div>`;
   cp4Liderancas();
 }
-function cp4Registrar(g,e1,n,s){cp4Registrar(cpDec(g),cpDec(e1),cpDec(n),s);}
+function cp4Registrar(g,e1,n,s){cp4RegistrarCore(cpDec(g),cpDec(e1),cpDec(n),s);}
 
 // ===== MÓDULO 2: DIÁRIO DA LIDERANÇA =====
 function dailyKey(){return `daily_ack_${EQ}_${DAILY_DATA}`;}
