@@ -1111,15 +1111,30 @@ function renderEscalaGerar(cnt){
 }
 
 // ── HTML DA ESCALA ────────────────────────────────────────
+function dataOrdem(dm){
+  if(!dm)return 999999;
+  const m=String(dm).match(/^(\d{1,2})\/(\d{1,2})$/);
+  if(!m)return 999999;
+  return Number(m[2])*100+Number(m[1]);
+}
+function eventosSemana(s){
+  const ev=[];
+  if(s.terca)ev.push({data:s.terca.data,titulo:'Terça – '+s.terca.data,bloco:s.terca});
+  if(s.quinta)ev.push({data:s.quinta.data,titulo:'Quinta – '+s.quinta.data,bloco:s.quinta});
+  if(s.manha)ev.push({data:s.domingo,titulo:'Domingo '+s.domingo+' – Manhã 9:30',bloco:s.manha});
+  if(!s.so_manha&&s.noite)ev.push({data:s.domingo,titulo:'Domingo '+s.domingo+' – Noite 19:00',bloco:s.noite,ordemExtra:1});
+  return ev.sort((a,b)=>dataOrdem(a.data)-dataOrdem(b.data)||(a.ordemExtra||0)-(b.ordemExtra||0));
+}
 function escalaHTML(esc){
-  return esc.semanas.map(s=>`
-    <div class="sk">
-      <div class="sh"><i class="ti ti-calendar-event"></i> Domingo ${s.domingo}${s.so_manha?' · Só manhã':''}</div>
-      ${blocoHTML('Manhã – 9:30',s.manha)}
-      ${!s.so_manha&&s.noite?blocoHTML('Noite – 19:00',s.noite):''}
-      ${s.terca?blocoHTML('Terça – '+s.terca.data,s.terca):''}
-      ${s.quinta?blocoHTML('Quinta – '+s.quinta.data,s.quinta):''}
-    </div>`).join('');
+  return esc.semanas.map((s,i)=>{
+    const eventos=eventosSemana(s);
+    const datas=eventos.map(x=>x.data).filter(Boolean).sort((a,b)=>dataOrdem(a)-dataOrdem(b));
+    const periodo=datas.length?(datas[0]===datas[datas.length-1]?datas[0]:datas[0]+' a '+datas[datas.length-1]):s.domingo;
+    return `<div class="sk">
+      <div class="sh"><i class="ti ti-calendar-event"></i> Semana ${i+1} · ${periodo}</div>
+      ${eventos.map(ev=>blocoHTML(ev.titulo,ev.bloco)).join('')}
+    </div>`;
+  }).join('');
 }
 function blocoHTML(tit,b){
   if(!b)return'';
@@ -1435,19 +1450,19 @@ function excelFormatado(){
 function gerarPdfHTML(esc){
   if(!esc||!esc.semanas)return'<p>Sem dados</p>';
   let h='';
-  esc.semanas.forEach(s=>{
-    h+=`<div class="bloco"><div class="dom-hdr">&#9656; DOMINGO ${e(s.domingo)}${s.so_manha?' &middot; S&oacute; manh&atilde;':''}</div>`;
-    const bls=[['MAN&Atilde;&ndash;9:30',s.manha]];
-    if(!s.so_manha&&s.noite)bls.push(['NOITE&ndash;19:00',s.noite]);
-    if(s.terca)bls.push([`TER&Ccedil;A&ndash;${e(s.terca.data)}`,s.terca]);
-    if(s.quinta)bls.push([`QUINTA&ndash;${e(s.quinta.data)}`,s.quinta]);
-    bls.forEach(([lbl,b])=>{
+  esc.semanas.forEach((s,i)=>{
+    const eventos=eventosSemana(s);
+    const datas=eventos.map(x=>x.data).filter(Boolean).sort((a,b)=>dataOrdem(a)-dataOrdem(b));
+    const periodo=datas.length?(datas[0]===datas[datas.length-1]?datas[0]:datas[0]+' a '+datas[datas.length-1]):s.domingo;
+    h+=`<div class="bloco"><div class="dom-hdr">SEMANA ${i+1} &middot; ${e(periodo)}</div>`;
+    eventos.forEach(ev=>{
+      const b=ev.bloco;
       if(!b)return;
       const ms=(b.banhMascs||[]).filter(x=>x);
       const fs=(b.banhFems||[]).filter(x=>x);
       const of=[...ms,...fs];
       const bM=ms[0]||''; const bF=fs[0]||'';
-      h+=`<div class="culto"><div class="culto-lbl">${lbl}</div>
+      h+=`<div class="culto"><div class="culto-lbl">${e(ev.titulo)}</div>
         <table class="ctbl"><tr><th colspan="2">BANHEIROS</th><th colspan="2">OFERTAS</th></tr>
         <tr><td class="gen m">&#9794;</td><td class="nm">${e(bM)}</td><td class="blt">&#8226;</td><td class="nm">${of[0]?e(of[0]):''}</td></tr>
         <tr><td class="gen f">&#9792;</td><td class="nm">${e(bF)}</td><td class="blt">&#8226;</td><td class="nm">${of[1]?e(of[1]):''}</td></tr>
