@@ -490,6 +490,12 @@ hr{border:none;border-top:0.5px solid var(--bd);margin:1rem 0}
               <option value="evitar">Evitar em culto</option>
               <option value="juntos">Manter juntos (mesmo horário)</option>
               <option value="max">Máximo de vezes por tipo</option>
+              <option value="min_total">Mínimo de escalas no mês</option>
+              <option value="max_total">Máximo de escalas no mês</option>
+              <option value="intervalo">Descanso mínimo entre cultos</option>
+              <option value="max_seguido">Máximo seguido no mesmo tipo</option>
+              <option value="separados">Não escalar duas pessoas juntas</option>
+              <option value="indisponivel">Indisponível em uma data</option>
               <option value="livre">Regra livre</option>
             </select>
           </div>
@@ -878,8 +884,12 @@ function uiR(){
   document.getElementById('rpdiv').style.display=t==='livre'?'none':'';
   const td=[...db.homens,...db.mulheres];
   if(t==='priorizar'||t==='evitar')ex.innerHTML=`<div class="sl">Culto</div><select id="rculto">${COPTS}</select>`;
-  else if(t==='juntos')ex.innerHTML=`<div class="sl">Junto com</div><select id="rp2">${td.map(n=>`<option value="${e(n)}">${e(n)}</option>`).join('')}</select>`;
+  else if(t==='juntos'||t==='separados')ex.innerHTML=`<div class="sl">${t==='juntos'?'Junto com':'Não escalar com'}</div><select id="rp2">${td.map(n=>`<option value="${e(n)}">${e(n)}</option>`).join('')}</select>`;
   else if(t==='max')ex.innerHTML=`<div class="g2"><div><div class="sl">Culto</div><select id="rculto">${COPTS}</select></div><div><div class="sl">Máximo</div><input type="number" id="rnum" min="1" max="8" value="1" style="max-width:90px"></div></div>`;
+  else if(t==='min_total'||t==='max_total')ex.innerHTML=`<div class="sl">Quantidade no mês</div><input type="number" id="rnum" min="0" max="31" value="${t==='min_total'?2:5}" style="max-width:120px">`;
+  else if(t==='intervalo')ex.innerHTML='<div class="sl">Cultos completos de descanso entre duas escalas</div><input type="number" id="rnum" min="0" max="10" value="1" style="max-width:120px">';
+  else if(t==='max_seguido')ex.innerHTML=`<div class="g2"><div><div class="sl">Culto</div><select id="rculto">${COPTS}</select></div><div><div class="sl">Máximo seguido</div><input type="number" id="rnum" min="1" max="8" value="2" style="max-width:90px"></div></div>`;
+  else if(t==='indisponivel')ex.innerHTML='<div class="sl">Data (DD/MM)</div><input type="text" id="rdata" maxlength="5" placeholder="Ex: 16/08">';
   else if(t==='livre')ex.innerHTML='<div class="sl">Regra</div><input type="text" id="rlivre" placeholder="Ex: Fulano evitar primeiros domingos">';
   else ex.innerHTML='';
 }
@@ -890,8 +900,14 @@ function addR(){
     const p=document.getElementById('rpess').value;if(!p)return;
     if(t==='priorizar')tx=`${p}: priorizar em ${CULTO_LB[document.getElementById('rculto').value]}`;
     else if(t==='evitar')tx=`${p}: evitar em ${CULTO_LB[document.getElementById('rculto').value]}`;
-    else if(t==='juntos'){const p2=document.getElementById('rp2').value;tx=`${p} e ${p2}: manter juntos`;}
+    else if(t==='juntos'){const p2=document.getElementById('rp2').value;if(!p2||p2===p)return;tx=`${p} e ${p2}: manter juntos`;}
+    else if(t==='separados'){const p2=document.getElementById('rp2').value;if(!p2||p2===p)return;tx=`${p} e ${p2}: não escalar juntos`;}
     else if(t==='max')tx=`${p}: máximo ${document.getElementById('rnum').value}x em ${CULTO_LB[document.getElementById('rculto').value]}`;
+    else if(t==='min_total')tx=`${p}: mínimo ${document.getElementById('rnum').value} escalas no mês`;
+    else if(t==='max_total')tx=`${p}: máximo ${document.getElementById('rnum').value} escalas no mês`;
+    else if(t==='intervalo')tx=`${p}: descansar ${document.getElementById('rnum').value} cultos entre escalas`;
+    else if(t==='max_seguido')tx=`${p}: máximo ${document.getElementById('rnum').value} vezes seguidas em ${CULTO_LB[document.getElementById('rculto').value]}`;
+    else if(t==='indisponivel'){const d=document.getElementById('rdata').value.trim();if(!/^\d{2}\/\d{2}$/.test(d)){toast('Informe a data no formato DD/MM','er');return;}tx=`${p}: indisponível em ${d}`;}
   }
   db.regras.push(tx);save();renderR();
 }
@@ -928,7 +944,7 @@ function gerarAuto(){
   if(!homens.length||!mulheres.length){gav.innerHTML+=`<div class="al er"><i class="ti ti-alert-circle"></i> Não há pessoas aptas suficientes após os bloqueios disciplinares.</div>`;return;}
 
   // ── Parsear regras ──
-  const evitar={}, priorizar={}, juntosLst=[], maxR={};
+  const evitar={}, priorizar={}, juntosLst=[], separadosLst=[], maxR={}, minTotal={}, maxTotal={}, intervalo={}, maxSeguido={}, indisponivel={};
   db.regras.forEach(r=>{
     let m;
     m=r.match(/^(.+?):\s*evitar em (.+)$/);
@@ -939,6 +955,18 @@ function gerarAuto(){
     if(m){juntosLst.push([m[1].trim(),m[2].trim()]);}
     m=r.match(/^(.+?):\s*máximo (\d+)x em (.+)$/);
     if(m){const c=ckFromLabel(m[3]);if(c){if(!maxR[m[1]])maxR[m[1]]={};maxR[m[1]][c]=parseInt(m[2]);}}
+    m=r.match(/^(.+?):\s*mínimo (\d+) escalas no mês$/);
+    if(m)minTotal[m[1].trim()]=parseInt(m[2]);
+    m=r.match(/^(.+?):\s*máximo (\d+) escalas no mês$/);
+    if(m)maxTotal[m[1].trim()]=parseInt(m[2]);
+    m=r.match(/^(.+?):\s*descansar (\d+) cultos entre escalas$/);
+    if(m)intervalo[m[1].trim()]=parseInt(m[2]);
+    m=r.match(/^(.+?):\s*máximo (\d+) vezes seguidas em (.+)$/);
+    if(m){const c=ckFromLabel(m[3]);if(c){if(!maxSeguido[m[1].trim()])maxSeguido[m[1].trim()]={};maxSeguido[m[1].trim()][c]=parseInt(m[2]);}}
+    m=r.match(/^(.+?) e (.+?):\s*não escalar juntos$/);
+    if(m)separadosLst.push([m[1].trim(),m[2].trim()]);
+    m=r.match(/^(.+?):\s*indisponível em (\d{2}\/\d{2})$/);
+    if(m){const n=m[1].trim();if(!indisponivel[n])indisponivel[n]=new Set();indisponivel[n].add(m[2]);}
   });
   function ckFromLabel(lb){
     return Object.keys(CULTO_LB).find(k=>CULTO_LB[k]===lb.trim())||null;
@@ -951,28 +979,49 @@ function gerarAuto(){
   // Rastrear quem já foi escalado em cada DIA (para não escalar 2x no mesmo dia)
   // Chave: "domingo_DD/MM"
   const diaUsado={};
+  let eventoAtual=0;
+  const ultimoEvento={}, ultimoTipo={}, sequenciaTipo={};
+  todos.forEach(n=>{ultimoEvento[n]=-999;ultimoTipo[n]=null;sequenciaTipo[n]=0;});
   function marcarDia(dia,nome){ if(!diaUsado[dia])diaUsado[dia]=new Set(); diaUsado[dia].add(nome); }
   function usadoNoDia(dia,nome){ return diaUsado[dia]?.has(nome)||false; }
+  function conflitaSeparados(nome,selecionados){
+    return separadosLst.some(([a,b])=>(nome===a&&selecionados.includes(b))||(nome===b&&selecionados.includes(a)));
+  }
 
-  // ── Função de score ──
-  function score(nome,tipo){
-    if(evitar[nome]?.includes(tipo)) return 99999;
-    if(maxR[nome]?.[tipo]!==undefined && cnt[nome][tipo]>=maxR[nome][tipo]) return 99999;
-    let s = cnt[nome].total * 10;
-    if(priorizar[nome]?.includes(tipo)) s -= 30;
-    s += cnt[nome][tipo] * 5;
-    s += Math.random() * 1.5;
+  // ── Função de score com EQUIDADE FORTE ─────────────────
+  // A carga total é o critério dominante. Preferências só desempatarão
+  // pessoas com cargas próximas, impedindo que alguém fique sem escala
+  // enquanto outros acumulam 2 ou 3 cultos a mais.
+  function score(nome,tipo,diaKey){
+    if(indisponivel[nome]?.has(diaKey)) return Infinity;
+    if(maxR[nome]?.[tipo]!==undefined && cnt[nome][tipo]>=maxR[nome][tipo]) return Infinity;
+    if(maxTotal[nome]!==undefined && cnt[nome].total>=maxTotal[nome]) return Infinity;
+    if(intervalo[nome]!==undefined && (eventoAtual-ultimoEvento[nome]-1)<intervalo[nome]) return Infinity;
+    if(maxSeguido[nome]?.[tipo]!==undefined && ultimoTipo[nome]===tipo && sequenciaTipo[nome]>=maxSeguido[nome][tipo]) return Infinity;
+
+    let s = cnt[nome].total * 10000;      // justiça global do mês: sempre dominante
+    s += cnt[nome][tipo] * 700;           // rodízio forte por tipo de culto
+    if(minTotal[nome]!==undefined && cnt[nome].total<minTotal[nome]) s -= 1800;
+    if(ultimoTipo[nome]===tipo) s += 350 * Math.max(1,sequenciaTipo[nome]);
+    if(evitar[nome]?.includes(tipo)) s += 220;
+    if(priorizar[nome]?.includes(tipo)) s -= 140;
+    s += Math.random() * 8;
     return s;
   }
 
-  // ── Selecionar N pessoas de um pool respeitando regras ──
-  function selecionar(pool, tipo, n, diaKey, excluir=new Set()){
-    return pool
-      .filter(p => !excluir.has(p) && !usadoNoDia(diaKey, p))
-      .map(p => ({p, s:score(p,tipo)}))
-      .sort((a,b)=>a.s-b.s)
-      .slice(0,n)
-      .map(x=>x.p);
+  // ── Selecionar N pessoas respeitando equilíbrio e limites ──
+  function selecionar(pool, tipo, n, diaKey, excluir=new Set(), jaSelecionados=[]){
+    const resultado=[];
+    while(resultado.length<n){
+      const candidatos=pool
+        .filter(p => !excluir.has(p) && !resultado.includes(p) && !usadoNoDia(diaKey,p) && !conflitaSeparados(p,[...jaSelecionados,...resultado]))
+        .map(p => ({p, s:score(p,tipo,diaKey)}))
+        .filter(x => Number.isFinite(x.s))
+        .sort((a,b)=>a.s-b.s);
+      if(!candidatos.length)break;
+      resultado.push(candidatos[0].p);
+    }
+    return resultado;
   }
 
   // ── Aplicar regra JUNTOS: se A está, B deve estar no mesmo bloco ──
@@ -1004,20 +1053,25 @@ function gerarAuto(){
   // ── Registrar escalas e marcar dia ──
   function registrar(selH, selF, tipo, diaKey){
     [...selH,...selF].forEach(n=>{
-      if(cnt[n]){ cnt[n][tipo]++; cnt[n].total++; }
+      if(cnt[n]){
+        cnt[n][tipo]++; cnt[n].total++;
+        if(ultimoTipo[n]===tipo)sequenciaTipo[n]++;else sequenciaTipo[n]=1;
+        ultimoTipo[n]=tipo;ultimoEvento[n]=eventoAtual;
+      }
       marcarDia(diaKey, n);
     });
   }
 
   // ── Montar bloco de um culto ──
   function montarBloco(tipo, diaKey, excluirExtra=new Set()){
+    eventoAtual++;
     const q=db.qtd[tipo];
     // Já usados no dia
     const excH=new Set([...excluirExtra]);
     const excF=new Set([...excluirExtra]);
-    const selH=selecionar(homens, tipo, q.h, diaKey, excH);
+    const selH=selecionar(homens, tipo, q.h, diaKey, excH, []);
     selH.forEach(x=>excH.add(x));
-    const selF=selecionar(mulheres, tipo, q.f, diaKey, excF);
+    const selF=selecionar(mulheres, tipo, q.f, diaKey, excF, selH);
     // Aplicar regra juntos
     aplicarJuntos(selH, selF, tipo, diaKey, q.h, q.f);
     // Remover duplicatas
@@ -1044,7 +1098,10 @@ escala={mes,semanas,geradoEm:new Date().toLocaleString('pt-BR')};
 function renderEscalaGerar(cnt){
   if(!escala)return;
   const el=document.getElementById('gres');
-  el.innerHTML=`<div class="al ok" style="margin-bottom:12px"><i class="ti ti-check"></i> Escala gerada! Revise e salve.</div>`+
+  const totais=Object.values(cnt||{}).map(c=>c.total);
+  const amplitude=totais.length?Math.max(...totais)-Math.min(...totais):0;
+  const nivel=amplitude<=1?'Equilíbrio excelente':amplitude===2?'Equilíbrio aceitável':'Revisão recomendada';
+  el.innerHTML=`<div class="al ${amplitude<=1?'ok':'wn'}" style="margin-bottom:12px"><i class="ti ti-scale"></i> Escala gerada · <strong>${nivel}</strong> · diferença máxima: ${amplitude}</div>`+
     escalaHTML(escala)+resumoHTML(cnt)+
     `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px" class="no-print">
       <button class="btn su" onclick="salvar()"><i class="ti ti-device-floppy"></i> Salvar escala</button>
