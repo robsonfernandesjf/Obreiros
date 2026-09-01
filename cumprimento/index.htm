@@ -311,6 +311,9 @@ hr{border:none;border-top:0.5px solid var(--bd);margin:1rem 0}
 .daily-trend{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px}.daily-trend div{background:#f5f3ef;border-radius:8px;padding:8px;text-align:center;font-size:11px}.daily-critical{background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;padding:10px 12px;margin-top:10px;font-size:12px;color:#9f1239}
 @media(max-width:900px){.cp4-layout{grid-template-columns:1fr}.cp4-toolbar{grid-template-columns:1fr 1fr}.cp4-toolbar button{grid-column:span 2}.cp4-leaders{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.cp4-summary{grid-template-columns:repeat(2,1fr)}.cp4-person{grid-template-columns:1fr}.cp4-actions{justify-content:flex-start}.cp4-toolbar{grid-template-columns:1fr}.cp4-toolbar button{grid-column:auto}.cp4-leaders{grid-template-columns:1fr}}
+
+/* VOLUNTÁRIOS */
+.vf-card{border:1px solid var(--bd);border-radius:12px;margin-bottom:12px;overflow:hidden}.vf-head{background:#111;color:#fff;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px}.vf-head strong{font-size:13px}.vf-grid{padding:10px 12px}.vf-row{display:grid;grid-template-columns:140px repeat(3,90px);gap:7px;align-items:center;padding:7px 0;border-bottom:1px solid #eee}.vf-row:last-child{border-bottom:0}.vf-row label{font-size:12px;font-weight:600}.vf-row input{padding:5px;text-align:center}.vf-hdr{font-size:10px;color:#888;text-transform:uppercase}.vol-block{border:1px solid var(--bd);border-radius:10px;margin:8px 0;overflow:hidden}.vol-block-h{background:#eef4fb;color:#1B3A6B;padding:7px 10px;font-size:12px;font-weight:700}.vol-func{padding:8px 10px;border-top:1px solid #eee}.vol-func:first-of-type{border-top:0}.vol-func b{font-size:12px}.vol-names{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}@media(max-width:600px){.vf-row{grid-template-columns:1fr repeat(3,62px)}}
 </style>
 
 </head>
@@ -360,6 +363,7 @@ hr{border:none;border-top:0.5px solid var(--bd);margin:1rem 0}
     <button class="ni active" onclick="ir('dash')"><i class="ti ti-home"></i> Início</button>
     <button class="ni" onclick="ir('equipe')"><i class="ti ti-users"></i> Equipe</button>
     <button class="ni" onclick="ir('cultos')"><i class="ti ti-calendar"></i> Cultos</button>
+    <button class="ni" id="nav-funcoes" onclick="ir('funcoes')" style="display:none"><i class="ti ti-layout-list"></i> Funções</button>
     <button class="ni" onclick="ir('regras')"><i class="ti ti-list-check"></i> Regras</button>
     <button class="ni" onclick="ir('gerar')"><i class="ti ti-sparkles"></i> Gerar escala</button>
     <button class="ni" onclick="ir('hist')"><i class="ti ti-history"></i> Histórico</button>
@@ -479,6 +483,19 @@ hr{border:none;border-top:0.5px solid var(--bd);margin:1rem 0}
       </div>
     </div>
 
+    <!-- FUNÇÕES DOS VOLUNTÁRIOS (somente equipes do tipo Voluntários) -->
+    <div class="page" id="pg-funcoes">
+      <div class="card">
+        <div class="ct"><i class="ti ti-layout-list"></i> Funções da equipe</div>
+        <div class="al in"><i class="ti ti-info-circle"></i> Cadastre as funções desta equipe. Cada função pode ter quantidades diferentes de homens, mulheres e vagas indiferentes em cada culto.</div>
+        <div class="row" style="margin-bottom:12px">
+          <input id="vf-nome" maxlength="50" placeholder="Ex.: Estacionamento, Recepção, Visitantes" style="flex:1" onkeydown="if(event.key==='Enter')volAdicionarFuncao()">
+          <button class="btn pr" onclick="volAdicionarFuncao()"><i class="ti ti-plus"></i> Adicionar função</button>
+        </div>
+        <div id="vf-lista"></div>
+      </div>
+    </div>
+
     <!-- REGRAS -->
     <div class="page" id="pg-regras">
       <div class="card">
@@ -517,7 +534,7 @@ hr{border:none;border-top:0.5px solid var(--bd);margin:1rem 0}
         <div class="g2" style="margin-bottom:12px">
           <div><div class="sl">Mês / título</div><input type="text" id="cmes" placeholder="ex: Agosto 2026"></div>
           <div style="display:flex;align-items:flex-end">
-            <button class="btn pr" style="width:100%" onclick="gerarAuto()"><i class="ti ti-sparkles"></i> Gerar automaticamente</button>
+            <button class="btn pr" style="width:100%" onclick="gerarEscalaAtual()"><i class="ti ti-sparkles"></i> Gerar automaticamente</button>
           </div>
         </div>
         <div class="al in"><i class="ti ti-info-circle"></i> O sistema distribui automaticamente seguindo as regras e equilíbrio. Você pode ajustar depois.</div>
@@ -635,7 +652,7 @@ hr{border:none;border-top:0.5px solid var(--bd);margin:1rem 0}
       <div class="card">
         <div class="ct"><i class="ti ti-user-plus"></i> Cadastrar nova equipe</div>
         <div class="al in" style="margin-bottom:12px"><i class="ti ti-info-circle"></i> Cria um novo login de equipe. O código é o que a pessoa vai digitar para entrar (sem espaços, letras minúsculas).</div>
-        <div class="g3" style="margin-bottom:12px">
+        <div class="g4" style="margin-bottom:12px">
           <div>
             <div class="sl">Código de login</div>
             <input type="text" id="nv-cod" placeholder="ex: joao">
@@ -647,6 +664,10 @@ hr{border:none;border-top:0.5px solid var(--bd);margin:1rem 0}
           <div>
             <div class="sl">Senha</div>
             <input type="text" id="nv-senha" placeholder="mínimo 6 caracteres">
+          </div>
+          <div>
+            <div class="sl">Tipo da equipe</div>
+            <select id="nv-tipo"><option value="obreiros">Obreiros</option><option value="voluntarios">Voluntários</option></select>
           </div>
         </div>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#555;margin-bottom:6px">
@@ -740,7 +761,7 @@ const MEM={};
 function lsG(k){try{return localStorage.getItem(k)}catch(e){return MEM[k]||null}}
 function lsS(k,v){try{localStorage.setItem(k,v)}catch(e){MEM[k]=v}}
 function dbK(){return'esc_'+EQ}
-function defDb(){return{homens:[],mulheres:[],domingos:[],tercas:[],quintas:[],regras:[],historico:[],cumprimentos:[],disciplinas:[],disciplinaConfig:{auto:true,janelaDias:60,justificada:false,regras:[{faltas:1,acao:'Orientação',dias:0},{faltas:2,acao:'Suspensão',dias:30},{faltas:3,acao:'Suspensão',dias:30},{faltas:4,acao:'Avaliação da liderança',dias:0}]},
+function defDb(){return{tipoEquipe:'obreiros',funcoes:[],homens:[],mulheres:[],domingos:[],tercas:[],quintas:[],regras:[],historico:[],cumprimentos:[],disciplinas:[],disciplinaConfig:{auto:true,janelaDias:60,justificada:false,regras:[{faltas:1,acao:'Orientação',dias:0},{faltas:2,acao:'Suspensão',dias:30},{faltas:3,acao:'Suspensão',dias:30},{faltas:4,acao:'Avaliação da liderança',dias:0}]},
   qtd:{dom_manha:{h:1,f:2},dom_noite:{h:1,f:4},terca:{h:1,f:4},quinta:{h:1,f:4}}}}
 let db={};
 let saveTimer=null;
@@ -767,8 +788,8 @@ async function salvarNuvem(){
   }catch(err){console.error('Erro ao salvar na nuvem:',err);setSyncStatus('error','Erro ao salvar');}
 }
 
-// ── NAV ──────────────────────────────────────────────────
-const TITS={dash:'Início',equipe:'Equipe',cultos:'Cultos',regras:'Regras',gerar:'Gerar escala',hist:'Histórico',cumprimento:'Cumprimento de escalas',disciplina:'Disciplina ministerial',admin:'Administração',viewall:'Todas as equipes'};
+// ── TIPO DE EQUIPE ────────────────────────────────────────\nconst TEAM_PREFIX_VOL='VOL::';\nfunction nomeEquipeLimpo(nome){return String(nome||'').startsWith(TEAM_PREFIX_VOL)?String(nome).slice(TEAM_PREFIX_VOL.length):String(nome||'');}\nfunction tipoPeloNomeEquipe(nome){return String(nome||'').startsWith(TEAM_PREFIX_VOL)?'voluntarios':'obreiros';}\nfunction isVoluntarios(){return db?.tipoEquipe==='voluntarios';}\nfunction aplicarTipoEquipe(){\n  const vol=isVoluntarios();\n  const nf=document.getElementById('nav-funcoes'); if(nf)nf.style.display=vol?'':'none';\n  // Obreiros permanecem exatamente com a interface atual. Só voluntários recebem adaptações de rótulo/configuração.\n  if(vol){\n    document.querySelectorAll('#pg-equipe input[placeholder]').forEach(el=>{if(el.id==='ih')el.placeholder='Nome do voluntário'; if(el.id==='if')el.placeholder='Nome da voluntária';});\n    const qtdCard=document.querySelector('#pg-cultos .card'); if(qtdCard)qtdCard.style.display='none';\n  }else{\n    const qtdCard=document.querySelector('#pg-cultos .card'); if(qtdCard)qtdCard.style.display='';\n  }\n}\nfunction checkGerarAtual(){return isVoluntarios()?volCheckGerar():checkGerar();}\nfunction gerarEscalaAtual(){return isVoluntarios()?volGerarAuto():gerarAuto();}\n\n// ── NAV ──────────────────────────────────────────────────
+const TITS={dash:'Início',equipe:'Equipe',cultos:'Cultos',funcoes:'Funções',regras:'Regras',gerar:'Gerar escala',hist:'Histórico',cumprimento:'Cumprimento de escalas',disciplina:'Disciplina ministerial',admin:'Administração',viewall:'Todas as equipes'};
 function toggleSidebar(open){
   document.getElementById('sidebar').classList.toggle('open',open);
   document.getElementById('sb-backdrop').classList.toggle('show',open);
@@ -779,8 +800,8 @@ function ir(pg){
   document.querySelector('[onclick="ir(\''+pg+'\')"]').classList.add('active');
   document.getElementById('ptit').textContent=TITS[pg];
   document.getElementById('pact').innerHTML='';
-  ({dash:renderDash,equipe:renderEq,cultos:()=>{renderC();renderQtd();},
-    regras:()=>{syncP();renderR();},gerar:checkGerar,hist:renderHist,cumprimento:()=>carregarCumprimento(false),disciplina:abrirDisciplina,admin:abrirAdmin,viewall:abrirViewAll})[pg]?.();
+  ({dash:renderDash,equipe:renderEq,cultos:()=>{renderC();if(!isVoluntarios())renderQtd();},funcoes:volRenderFuncoes,
+    regras:()=>{syncP();renderR();},gerar:checkGerarAtual,hist:renderHist,cumprimento:()=>carregarCumprimento(false),disciplina:abrirDisciplina,admin:abrirAdmin,viewall:abrirViewAll})[pg]?.();
   toggleSidebar(false);
 }
 
@@ -1126,6 +1147,7 @@ function eventosSemana(s){
   return ev.sort((a,b)=>dataOrdem(a.data)-dataOrdem(b.data)||(a.ordemExtra||0)-(b.ordemExtra||0));
 }
 function escalaHTML(esc){
+  if(esc?.tipoEquipe==='voluntarios')return volEscalaHtml(esc);
   return esc.semanas.map((s,i)=>{
     const eventos=eventosSemana(s);
     const datas=eventos.map(x=>x.data).filter(Boolean).sort((a,b)=>dataOrdem(a)-dataOrdem(b));
@@ -1735,10 +1757,13 @@ async function login(){
     db=defDb();
     save();
   }
+  if(tipoPeloNomeEquipe(nome)==='voluntarios') db.tipoEquipe='voluntarios';
+  EQ_NOME=nomeEquipeLimpo(nome);
   seedDemonstracao();
   document.getElementById('login-wrap').style.display='none';
   document.getElementById('app').style.display='flex';
-  document.getElementById('sb-eq').textContent=nome;
+  document.getElementById('sb-eq').textContent=EQ_NOME;
+  aplicarTipoEquipe();
   document.getElementById('nav-admin').style.display=admin?'':'none';
   document.getElementById('nav-cumprimento').style.display=admin?'':'none';
   document.getElementById('nav-disciplina').style.display=admin?'':'none';
@@ -1799,7 +1824,7 @@ async function carregarCumprimento(forcar){
     if(sb){
       const {data,error}=await sb.rpc('listar_todas_equipes',{p_code:EQ,p_senha:EQ_SENHA});
       if(error)throw error;
-      CP_EQS=(data||[]).map(r=>({code:r.code,nome:r.nome,dados:{...defDb(),...(r.dados||{})}}));
+      CP_EQS=(data||[]).map(r=>({code:r.code,nome:nomeEquipeLimpo(r.nome),dados:{...defDb(),...(r.dados||{})}}));
     }else{
       CP_EQS=[{code:EQ,nome:EQ_NOME,dados:db}];
     }
@@ -2018,7 +2043,7 @@ function renderDisciplina(){
   document.getElementById('dc-sugestoes').innerHTML=cand.length?cand.map(x=>`<div class="disc-row"><div class="disc-head"><div><div class="disc-title">${e(x.nome)}</div><div class="disc-meta">${e(x.equipe)} · ${x.qtd} falta(s) nos últimos ${cfg.janelaDias} dias</div></div><span class="disc-badge warning">Sugerida</span></div><div style="font-size:12px;margin-top:7px"><strong>${e(x.regra.acao)}</strong>${x.regra.dias?` por ${x.regra.dias} dias`:''}</div><button class="btn pr sm" style="margin-top:9px" onclick='iniciarDisciplina(${JSON.stringify(x.nome)},${JSON.stringify(x.equipeCode)},${JSON.stringify(x.equipe)},${JSON.stringify(x.regra)},${x.qtd})'>Aplicar medida</button></div>`).join(''):'<div class="disc-empty">Nenhuma sugestão pendente.</div>';
 }
 
-// ── ADMINISTRAÇÃO (trocar senha de outra equipe) ───────────
+// ── VOLUNTÁRIOS: FUNÇÕES CONFIGURÁVEIS ───────────────────\nfunction volCfgPadrao(){return{dom_manha:{h:0,f:0,i:0},dom_noite:{h:0,f:0,i:0},terca:{h:0,f:0,i:0},quinta:{h:0,f:0,i:0}};}\nfunction volAdicionarFuncao(){\n  const el=document.getElementById('vf-nome'),nome=(el?.value||'').trim().replace(/\s+/g,' '); if(!nome)return;\n  db.funcoes=db.funcoes||[];\n  if(db.funcoes.some(f=>nomeIgual(f.nome,nome))){toast('Esta função já existe.','er');return;}\n  db.funcoes.push({id:'fn_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),nome,config:volCfgPadrao()});\n  el.value='';save();volRenderFuncoes();\n}\nfunction volRemoverFuncao(id){const f=(db.funcoes||[]).find(x=>x.id===id);if(!f||!confirm(`Remover a função ${f.nome}?`))return;db.funcoes=db.funcoes.filter(x=>x.id!==id);save();volRenderFuncoes();}\nfunction volAtualizarQtd(id,tipo,sexo,val){const f=(db.funcoes||[]).find(x=>x.id===id);if(!f)return;f.config=f.config||volCfgPadrao();f.config[tipo]=f.config[tipo]||{h:0,f:0,i:0};f.config[tipo][sexo]=Math.max(0,parseInt(val)||0);save();}\nfunction volRenderFuncoes(){\n  const box=document.getElementById('vf-lista');if(!box)return;const fun=db.funcoes||[];\n  if(!fun.length){box.innerHTML='<div class="team-empty">Nenhuma função cadastrada.</div>';return;}\n  const tipos=[['dom_manha','Domingo manhã'],['dom_noite','Domingo noite'],['terca','Terça'],['quinta','Quinta']];\n  box.innerHTML=fun.map(fn=>{fn.config=fn.config||volCfgPadrao();return `<div class="vf-card"><div class="vf-head"><strong>${e(fn.nome)}</strong><button class="btn da sm" onclick="volRemoverFuncao('${fn.id}')"><i class="ti ti-trash"></i></button></div><div class="vf-grid"><div class="vf-row vf-hdr"><div>Culto</div><div>Homens</div><div>Mulheres</div><div>Indiferente</div></div>${tipos.map(([k,lb])=>{const q=fn.config[k]||{h:0,f:0,i:0};return `<div class="vf-row"><label>${lb}</label><input type="number" min="0" value="${q.h||0}" onchange="volAtualizarQtd('${fn.id}','${k}','h',this.value)"><input type="number" min="0" value="${q.f||0}" onchange="volAtualizarQtd('${fn.id}','${k}','f',this.value)"><input type="number" min="0" value="${q.i||0}" onchange="volAtualizarQtd('${fn.id}','${k}','i',this.value)"></div>`}).join('')}</div></div>`}).join('');\n}\nfunction volCheckGerar(){\n  const el=document.getElementById('gav');el.innerHTML='';const erros=[];\n  if(!db.homens.length&&!db.mulheres.length)erros.push('Adicione voluntários à equipe');\n  if(!(db.funcoes||[]).length)erros.push('Cadastre ao menos uma função');\n  if(!db.domingos.length&&!db.tercas.length&&!db.quintas.length)erros.push('Adicione as datas dos cultos');\n  if(erros.length)el.innerHTML=erros.map(x=>`<div class="al wn"><i class="ti ti-alert-triangle"></i> ${x}</div>`).join('');\n}\nfunction volGerarAuto(){\n  volCheckGerar();if(document.querySelectorAll('#gav .al.wn').length)return;\n  const homens=[...db.homens],mulheres=[...db.mulheres],todos=[...homens,...mulheres];const cnt={};todos.forEach(n=>cnt[n]={total:0,dom_manha:0,dom_noite:0,terca:0,quinta:0});\n  const usadoDia={};function usado(d,n){return usadoDia[d]?.has(n)}function mark(d,n){(usadoDia[d]||(usadoDia[d]=new Set())).add(n)}\n  function pick(pool,n,tipo,dia,ex=new Set()){return pool.filter(x=>!ex.has(x)&&!usado(dia,x)&&!disciplinaBloqueiaNome(x)).sort((a,b)=>(cnt[a].total-cnt[b].total)||(cnt[a][tipo]-cnt[b][tipo])||a.localeCompare(b,'pt-BR')).slice(0,n)}\n  function bloco(tipo,dia){const fun=[];for(const fn of (db.funcoes||[])){const q=(fn.config||volCfgPadrao())[tipo]||{h:0,f:0,i:0};const ex=new Set();const hs=pick(homens,q.h||0,tipo,dia,ex);hs.forEach(x=>ex.add(x));const fs=pick(mulheres,q.f||0,tipo,dia,ex);fs.forEach(x=>ex.add(x));const rest=pick(todos,q.i||0,tipo,dia,ex);const nomes=[...hs,...fs,...rest];nomes.forEach(n=>{cnt[n].total++;cnt[n][tipo]++;mark(dia,n)});fun.push({nome:fn.nome,h:hs,f:fs,i:rest});}return{funcoes:fun};}\n  const semanas=[];const max=Math.max(db.domingos.length,db.tercas.length,db.quintas.length);for(let i=0;i<max;i++){const dom=db.domingos[i],ter=db.tercas[i],qui=db.quintas[i];semanas.push({domingo:dom?.data||'',so_manha:dom?.tipo==='manha',manha:dom?bloco('dom_manha',dom.data):null,noite:dom&&dom.tipo!=='manha'?bloco('dom_noite',dom.data):null,terca:ter?{data:ter,...bloco('terca',ter)}:null,quinta:qui?{data:qui,...bloco('quinta',qui)}:null});}\n  escala={mes:document.getElementById('cmes').value||'Mês',semanas,geradoEm:new Date().toLocaleString('pt-BR'),tipoEquipe:'voluntarios'};volRenderEscala(cnt);\n}\nfunction volBlocoHtml(titulo,b){if(!b)return'';return `<div class="cb"><div class="cl">${titulo}</div>${(b.funcoes||[]).map(fn=>`<div class="vol-block"><div class="vol-block-h">${e(fn.nome)}</div><div class="vol-func"><div class="vol-names">${fn.h.map(n=>`<span class="np bm">♂ ${e(n)}</span>`).join('')}${fn.f.map(n=>`<span class="np bf">♀ ${e(n)}</span>`).join('')}${fn.i.map(n=>`<span class="np">${e(n)}</span>`).join('')||'<span style="font-size:11px;color:#aaa">Sem vagas configuradas</span>'}</div></div></div>`).join('')}</div>`}\nfunction volEscalaHtml(esc){return esc.semanas.map(s=>{const partes=[];if(s.terca)partes.push(volBlocoHtml('Terça – '+s.terca.data,s.terca));if(s.quinta)partes.push(volBlocoHtml('Quinta – '+s.quinta.data,s.quinta));if(s.manha)partes.push(volBlocoHtml('Domingo '+s.domingo+' – Manhã',s.manha));if(s.noite)partes.push(volBlocoHtml('Domingo '+s.domingo+' – Noite',s.noite));return partes.join('')?`<div class="sk">${partes.join('')}</div>`:''}).join('')}\nfunction volRenderEscala(cnt){const el=document.getElementById('gres');el.innerHTML=`<div class="al ok"><i class="ti ti-check"></i> Escala de voluntários gerada. Revise antes de salvar.</div>`+volEscalaHtml(escala)+`<div class="card"><div class="ct">Resumo no sistema</div>${Object.keys(cnt).sort().map(n=>`<div class="li"><span>${e(n)}</span><strong>${cnt[n].total} escala(s)</strong></div>`).join('')}</div><div class="row no-print"><button class="btn su" onclick="salvar()"><i class="ti ti-device-floppy"></i> Salvar escala</button><button class="btn" onclick="volAbrirPdf()"><i class="ti ti-file-description"></i> Visualizar PDF</button></div>`;}\nfunction volAbrirPdf(){if(!escala)return;document.getElementById('pdf-body').innerHTML=`<div class="topo"><div><h1>Escala de Voluntários</h1><p>${e(escala.mes||'')}</p></div></div>`+volEscalaHtml(escala);document.getElementById('pdf-modal').classList.add('show');}\n\n// ── ADMINISTRAÇÃO (trocar senha de outra equipe) ───────────
 async function abrirAdmin(){
   const sel=document.getElementById('ad-eq');
   const selPm=document.getElementById('pm-eq');
@@ -2033,7 +2058,7 @@ async function abrirAdmin(){
     selPm.innerHTML=sel.innerHTML;
     return;
   }
-  const opts=data.map(eq=>`<option value="${e(eq.code)}">${e(eq.nome)}</option>`).join('');
+  const opts=data.map(eq=>`<option value="${e(eq.code)}">${e(nomeEquipeLimpo(eq.nome))}</option>`).join('');
   sel.innerHTML=opts;
   selPm.innerHTML=opts;
   if(data.length) carregarFlagsEquipe(data[0].code);
@@ -2086,6 +2111,8 @@ async function adminCriarEquipe(){
   const msg=document.getElementById('nv-msg');
   const cod=document.getElementById('nv-cod').value.trim().toLowerCase().replace(/\s+/g,'');
   const nome=document.getElementById('nv-nome').value.trim();
+  const tipo=document.getElementById('nv-tipo')?.value||'obreiros';
+  const nomePersistido=tipo==='voluntarios'?TEAM_PREFIX_VOL+nome:nome;
   const senha=document.getElementById('nv-senha').value.trim();
   const ehAdmin=document.getElementById('nv-admin').checked;
   const veTudo=document.getElementById('nv-vetudo').checked;
@@ -2096,7 +2123,7 @@ async function adminCriarEquipe(){
   const senhaAdmin=prompt('Confirme sua própria senha de administrador para autorizar o cadastro:');
   if(!senhaAdmin)return;
   const {data,error}=await sb.rpc('admin_criar_equipe',{
-    p_admin_code:EQ, p_admin_senha:senhaAdmin, p_code:cod, p_nome:nome, p_senha:senha, p_is_admin:ehAdmin, p_ve_tudo:veTudo
+    p_admin_code:EQ, p_admin_senha:senhaAdmin, p_code:cod, p_nome:nomePersistido, p_senha:senha, p_is_admin:ehAdmin, p_ve_tudo:veTudo
   });
   if(error){ msg.innerHTML='<div class="al er"><i class="ti ti-alert-circle"></i> Erro ao cadastrar equipe.</div>'; return; }
   if(data==='unauthorized'){ msg.innerHTML='<div class="al er"><i class="ti ti-alert-circle"></i> Senha de admin incorreta.</div>'; return; }
@@ -2104,6 +2131,7 @@ async function adminCriarEquipe(){
   document.getElementById('nv-cod').value='';
   document.getElementById('nv-nome').value='';
   document.getElementById('nv-senha').value='';
+  if(document.getElementById('nv-tipo'))document.getElementById('nv-tipo').value='obreiros';
   document.getElementById('nv-admin').checked=false;
   document.getElementById('nv-vetudo').checked=false;
   toast('Equipe cadastrada com sucesso!');
@@ -2204,7 +2232,7 @@ function cp4Finalizar(grupoKey){const g=CP4_GRUPOS.find(x=>x.key===grupoKey);if(
 function cp4AlternarModo(){CP4_MODO_CULTO=!CP4_MODO_CULTO;renderCumprimento();}
 async function carregarCumprimento(){
   if(!IS_ADMIN){toast('Acesso exclusivo do administrador.','er');return;}
-  try{if(sb){const {data,error}=await sb.rpc('listar_todas_equipes',{p_code:EQ,p_senha:EQ_SENHA});if(error)throw error;CP_EQS=(data||[]).map(r=>({code:r.code,nome:r.nome,dados:{...defDb(),...(r.dados||{})}}));}else CP_EQS=[{code:EQ,nome:EQ_NOME,dados:db}];}
+  try{if(sb){const {data,error}=await sb.rpc('listar_todas_equipes',{p_code:EQ,p_senha:EQ_SENHA});if(error)throw error;CP_EQS=(data||[]).map(r=>({code:r.code,nome:nomeEquipeLimpo(r.nome),dados:{...defDb(),...(r.dados||{})}}));}else CP_EQS=[{code:EQ,nome:EQ_NOME,dados:db}];}
   catch(err){console.error(err);CP_EQS=[{code:EQ,nome:EQ_NOME,dados:db}];toast('Não foi possível carregar todas as equipes.','er');}
   CP_EVENTOS=CP_EQS.flatMap(x=>cpEscalasParaEventos(x.code,x.nome,x.dados));CP4_GRUPOS=cp4Agrupar(CP_EVENTOS);
   const sel=document.getElementById('cp4-equipe');if(sel)sel.innerHTML='<option value="">Todas as equipes</option>'+CP_EQS.map(x=>`<option value="${e(x.code)}">${e(x.nome)}</option>`).join('');
