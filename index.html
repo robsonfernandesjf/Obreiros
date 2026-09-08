@@ -2107,7 +2107,7 @@ function volGerarAuto(){
     const todos=[...homens,...mulheres];
     const cnt={};todos.forEach(n=>cnt[n]={total:0,dom_manha:0,dom_noite:0,terca:0,quinta:0});
 
-    // Regras dos voluntários. Usa o mesmo cadastro de regras, sem alterar o motor de Obreiros.
+    // Regras exclusivas do motor de Voluntários. O motor de Obreiros não é alterado aqui.
     const evitar={},naoEscalar={},priorizar={},maxR={},minTotal={},maxTotal={},intervalo={},maxSeguido={},indisponivel={},juntosLst=[],separadosLst=[];
     function ck(lb){return Object.keys(CULTO_LB).find(k=>CULTO_LB[k]===String(lb||'').trim())||null;}
     (db.regras||[]).forEach(r=>{
@@ -2125,6 +2125,15 @@ function volGerarAuto(){
       m=r.match(/^(.+?) e (.+?):\s*não escalar juntos$/);if(m)separadosLst.push([m[1].trim(),m[2].trim()]);
     });
 
+    const avisos=[];
+    // Conflitos de regra: o bloqueio sempre vence prioridade/evitar.
+    todos.forEach(n=>{
+      (naoEscalar[n]||[]).forEach(tipo=>{
+        if(priorizar[n]?.includes(tipo))avisos.push(`${n}: "não escalar" prevaleceu sobre "priorizar" em ${CULTO_LB[tipo]}.`);
+        if(evitar[n]?.includes(tipo))avisos.push(`${n}: "não escalar" prevaleceu sobre "evitar" em ${CULTO_LB[tipo]}.`);
+      });
+    });
+
     const usadoDia={};
     let eventoAtual=0;
     const ultimoEvento={},ultimoTipo={},sequenciaTipo={};
@@ -2133,6 +2142,7 @@ function volGerarAuto(){
     function mark(d,n){(usadoDia[d]||(usadoDia[d]=new Set())).add(n);}
     function separa(nome,sel){return separadosLst.some(([a,b])=>(nome===a&&sel.includes(b))||(nome===b&&sel.includes(a)));}
     function elegivel(nome,tipo,dia,sel=[]){
+      if(!cnt[nome])return false;
       if(naoEscalar[nome]?.includes(tipo))return false;
       if(indisponivel[nome]?.has(dia))return false;
       if(maxR[nome]?.[tipo]!==undefined && cnt[nome][tipo]>=maxR[nome][tipo])return false;
@@ -2150,8 +2160,6 @@ function volGerarAuto(){
       if(ultimoTipo[nome]===tipo)s+=350*Math.max(1,sequenciaTipo[nome]);
       return s;
     }
-    // A cada clique, muda somente o desempate entre candidatos de mesma qualidade.
-    // O equilíbrio e as regras continuam tendo prioridade absoluta.
     function desempate(nome,tipo,dia){
       let h=2166136261;
       const txt=nome+'|'+tipo+'|'+dia+'|'+volGeracaoSeq;
@@ -2166,7 +2174,65 @@ function volGerarAuto(){
         .slice(0,n).map(o=>o.x);
     }
     function registrar(nomes,tipo,dia){
-      nomes.forEach(n=>{cnt[n].total++;cnt[n][tipo]++;mark(dia,n);if(ultimoTipo[n]===tipo)sequenciaTipo[n]++;else sequenciaTipo[n]=1;ultimoTipo[n]=tipo;ultimoEvento[n]=eventoAtual;});
+      [...new Set(nomes)].forEach(n=>{
+        cnt[n].total++;cnt[n][tipo]++;mark(dia,n);
+        if(ultimoTipo[n]===tipo)sequenciaTipo[n]++;else sequenciaTipo[n]=1;
+        ultimoTipo[n]=tipo;ultimoEvento[n]=eventoAtual;
+      });
+    }
+    function todosSelecionados(fun){return fun.flatMap(x=>[...(x.h||[]),...(x.f||[]),...(x.i||[])]);}
+    function protegidoPorDupla(nome,selecionados){
+      return juntosLst.some(([a,b])=>selecionados.includes(a)&&selecionados.includes(b)&&(nome===a||nome===b));
+    }
+    function tentarInserirParceiro(fun,ausente,presente,tipo,dia){
+      const selecionados=todosSelecionados(fun);
+      if(selecionados.includes(ausente))return true;
+      if(!todos.includes(ausente))return false;
+      const masculino=homens.includes(ausente), feminino=mulheres.includes(ausente);
+      const grupos=masculino?['h','i']:feminino?['f','i']:['i'];
+      for(const grupo of grupos){
+        for(const item of fun){
+          const arr=item[grupo]||[];
+          const limite=Number(item.esperado?.[grupo])||0;
+          // Há vaga livre no grupo: incluir sem ultrapassar a configuração.
+          if(arr.length<limite){
+            const sel=todosSelecionados(fun);
+            if(elegivel(ausente,tipo,dia,sel)){arr.push(ausente);return true;}
+          }
+          if(!arr.length)continue;
+          // Se o grupo está cheio, troca quem tem pior score, preservando o parceiro já presente
+          // e evitando quebrar outra dupla que já esteja corretamente junta.
+          const candidatos=arr
+            .filter(v=>v!==presente&&!protegidoPorDupla(v,selecionados))
+            .map(v=>({v,s:score(v,tipo)}))
+            .sort((a,b)=>b.s-a.s);
+          for(const cand of candidatos){
+            const selSemVitima=todosSelecionados(fun).filter(x=>x!==cand.v);
+            if(elegivel(ausente,tipo,dia,selSemVitima)){
+              const idx=arr.indexOf(cand.v);if(idx>=0){arr[idx]=ausente;return true;}
+            }
+          }
+        }
+      }
+      return false;
+    }
+    function aplicarJuntosVol(fun,tipo,dia){
+      // Algumas duplas podem depender de outra substituição; fazemos poucas passagens estáveis.
+      for(let rodada=0;rodada<3;rodada++){
+        let mudou=false;
+        for(const [a,b] of juntosLst){
+          const sel=todosSelecionados(fun);
+          const temA=sel.includes(a),temB=sel.includes(b);
+          if(temA===temB)continue;
+          const ausente=temA?b:a,presente=temA?a:b;
+          if(tentarInserirParceiro(fun,ausente,presente,tipo,dia))mudou=true;
+        }
+        if(!mudou)break;
+      }
+      for(const [a,b] of juntosLst){
+        const sel=todosSelecionados(fun);
+        if(sel.includes(a)!==sel.includes(b))avisos.push(`${a} e ${b}: não foi possível manter juntos em ${CULTO_LB[tipo]} de ${dia} sem violar outra regra ou a quantidade da função.`);
+      }
     }
     function bloco(tipo,dia){
       eventoAtual++;
@@ -2174,28 +2240,47 @@ function volGerarAuto(){
       for(const fn of (db.funcoes||[])){
         const q=(fn.config||volCfgPadrao())[tipo]||{h:0,f:0,i:0};
         const ex=new Set(selecionadosCulto);
-        const hs=pick(homens,Number(q.h)||0,tipo,dia,ex,selecionadosCulto);hs.forEach(x=>{ex.add(x);selecionadosCulto.push(x)});
-        const fs=pick(mulheres,Number(q.f)||0,tipo,dia,ex,selecionadosCulto);fs.forEach(x=>{ex.add(x);selecionadosCulto.push(x)});
+        const hs=pick(homens,Number(q.h)||0,tipo,dia,ex,selecionadosCulto);hs.forEach(x=>{ex.add(x);selecionadosCulto.push(x);});
+        const fs=pick(mulheres,Number(q.f)||0,tipo,dia,ex,selecionadosCulto);fs.forEach(x=>{ex.add(x);selecionadosCulto.push(x);});
         const rest=pick(todos,Number(q.i)||0,tipo,dia,ex,selecionadosCulto);rest.forEach(x=>selecionadosCulto.push(x));
-        const nomes=[...hs,...fs,...rest];
-        registrar(nomes,tipo,dia);
         fun.push({nome:fn.nome,h:hs,f:fs,i:rest,esperado:{h:Number(q.h)||0,f:Number(q.f)||0,i:Number(q.i)||0}});
       }
+      aplicarJuntosVol(fun,tipo,dia);
+      const nomes=todosSelecionados(fun);
+      registrar(nomes,tipo,dia);
       return{funcoes:fun};
     }
+
+    // GERAÇÃO CRONOLÓGICA REAL: terça/quinta/domingo entram na sequência pela data,
+    // e domingo manhã vem antes de domingo noite. Isso torna a regra de descanso coerente.
+    const eventos=[];
+    (db.tercas||[]).forEach((d,i)=>eventos.push({tipo:'terca',data:d,idx:i,ordemExtra:0}));
+    (db.quintas||[]).forEach((d,i)=>eventos.push({tipo:'quinta',data:d,idx:i,ordemExtra:0}));
+    (db.domingos||[]).forEach((dom,i)=>{
+      eventos.push({tipo:'dom_manha',data:dom.data,idx:i,ordemExtra:0});
+      if(dom.tipo!=='manha')eventos.push({tipo:'dom_noite',data:dom.data,idx:i,ordemExtra:1});
+    });
+    eventos.sort((a,b)=>dataOrdem(a.data)-dataOrdem(b.data)||(a.ordemExtra||0)-(b.ordemExtra||0));
+    const resultados={};
+    eventos.forEach(ev=>{resultados[ev.tipo+'|'+ev.data]=bloco(ev.tipo,ev.data);});
 
     const semanas=[];
     const max=Math.max(db.domingos.length,db.tercas.length,db.quintas.length);
     for(let i=0;i<max;i++){
       const dom=db.domingos[i],ter=db.tercas[i],qui=db.quintas[i];
       semanas.push({domingo:dom?.data||'',so_manha:dom?.tipo==='manha',
-        manha:dom?bloco('dom_manha',dom.data):null,
-        noite:dom&&dom.tipo!=='manha'?bloco('dom_noite',dom.data):null,
-        terca:ter?{data:ter,...bloco('terca',ter)}:null,
-        quinta:qui?{data:qui,...bloco('quinta',qui)}:null});
+        manha:dom?(resultados['dom_manha|'+dom.data]||null):null,
+        noite:dom&&dom.tipo!=='manha'?(resultados['dom_noite|'+dom.data]||null):null,
+        terca:ter?{data:ter,...(resultados['terca|'+ter]||{funcoes:[]})}:null,
+        quinta:qui?{data:qui,...(resultados['quinta|'+qui]||{funcoes:[]})}:null});
     }
     escala={mes:document.getElementById('cmes').value||'Mês',semanas,geradoEm:new Date().toLocaleString('pt-BR'),tipoEquipe:'voluntarios'};
     volRenderEscala(cnt);
+    if(avisos.length){
+      const el=document.getElementById('gres');
+      const unicos=[...new Set(avisos)];
+      if(el)el.insertAdjacentHTML('afterbegin',`<div class="al wn" style="margin-bottom:10px"><i class="ti ti-alert-triangle"></i> <strong>Regras que exigem atenção:</strong><br>${unicos.map(x=>'• '+e(x)).join('<br>')}</div>`);
+    }
   }catch(err){
     console.error('Erro ao gerar escala de voluntários:',err);
     const el=document.getElementById('gav');
@@ -2203,6 +2288,7 @@ function volGerarAuto(){
     toast('Erro ao gerar escala de voluntários.','er');
   }
 }
+
 function volBlocoHtml(titulo,b){
   if(!b)return'';
   return `<div class="cb"><div class="cl">${titulo}</div>${(b.funcoes||[]).map(fn=>{
