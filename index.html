@@ -2189,7 +2189,27 @@ function volGerarAuto(){
     toast('Erro ao gerar escala de voluntários.','er');
   }
 }
-function volBlocoHtml(titulo,b){if(!b)return'';return `<div class="cb"><div class="cl">${titulo}</div>${(b.funcoes||[]).map(fn=>`<div class="vol-block"><div class="vol-block-h">${e(fn.nome)}</div><div class="vol-func"><div class="vol-names">${fn.h.map(n=>`<span class="np bm">♂ ${e(n)}</span>`).join('')}${fn.f.map(n=>`<span class="np bf">♀ ${e(n)}</span>`).join('')}${fn.i.map(n=>`<span class="np">${e(n)}</span>`).join('')||'<span style="font-size:11px;color:#aaa">Sem vagas configuradas</span>'}</div></div></div>`).join('')}</div>`}
+function volBlocoHtml(titulo,b){
+  if(!b)return'';
+  return `<div class="cb"><div class="cl">${titulo}</div>${(b.funcoes||[]).map(fn=>{
+    const hs=Array.isArray(fn.h)?fn.h:[], fs=Array.isArray(fn.f)?fn.f:[], is=Array.isArray(fn.i)?fn.i:[];
+    const esp=fn.esperado||{h:0,f:0,i:0};
+    const esperado=(Number(esp.h)||0)+(Number(esp.f)||0)+(Number(esp.i)||0);
+    const preenchido=hs.length+fs.length+is.length;
+    let conteudo='';
+    if(esperado===0){
+      conteudo='<span style="font-size:11px;color:#aaa">Sem vagas configuradas para este culto</span>';
+    }else{
+      conteudo=hs.map(n=>`<span class="np bm">♂ ${e(n)}</span>`).join('')+
+        fs.map(n=>`<span class="np bf">♀ ${e(n)}</span>`).join('')+
+        is.map(n=>`<span class="np">${e(n)}</span>`).join('');
+      if(preenchido<esperado){
+        conteudo+=`<span style="font-size:11px;color:#b45309;font-weight:600">⚠ ${esperado-preenchido} vaga(s) não preenchida(s)</span>`;
+      }
+    }
+    return `<div class="vol-block"><div class="vol-block-h">${e(fn.nome)}</div><div class="vol-func"><div class="vol-names">${conteudo}</div></div></div>`;
+  }).join('')}</div>`;
+}
 function volEscalaHtml(esc){return esc.semanas.map(s=>{const partes=[];if(s.terca)partes.push(volBlocoHtml('Terça – '+s.terca.data,s.terca));if(s.quinta)partes.push(volBlocoHtml('Quinta – '+s.quinta.data,s.quinta));if(s.manha)partes.push(volBlocoHtml('Domingo '+s.domingo+' – Manhã',s.manha));if(s.noite)partes.push(volBlocoHtml('Domingo '+s.domingo+' – Noite',s.noite));return partes.join('')?`<div class="sk">${partes.join('')}</div>`:''}).join('')}
 function volRenderEscala(cnt){const el=document.getElementById('gres');el.innerHTML=`<div class="al ok"><i class="ti ti-check"></i> Escala de voluntários gerada. Revise antes de salvar.</div>`+volEscalaHtml(escala)+`<div class="card"><div class="ct">Resumo no sistema</div>${Object.keys(cnt).sort().map(n=>`<div class="li"><span>${e(n)}</span><strong>${cnt[n].total} escala(s)</strong></div>`).join('')}</div><div class="row no-print"><button class="btn su" onclick="salvar()"><i class="ti ti-device-floppy"></i> Salvar escala</button><button class="btn" onclick="volAbrirPdf()"><i class="ti ti-file-description"></i> Visualizar PDF</button></div>`;}
 function volAbrirPdf(){if(!escala)return;document.getElementById('pdf-body').innerHTML=`<div class="topo"><div><h1>Escala de Voluntários</h1><p>${e(escala.mes||'')}</p></div></div>`+volEscalaHtml(escala);document.getElementById('pdf-modal').classList.add('show');}
