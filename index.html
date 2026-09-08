@@ -505,6 +505,7 @@ hr{border:none;border-top:0.5px solid var(--bd);margin:1rem 0}
             <select id="rtipo" onchange="uiR()">
               <option value="priorizar">Priorizar em culto</option>
               <option value="evitar">Evitar em culto</option>
+              <option value="nao_escalar">Não escalar em culto</option>
               <option value="juntos">Manter juntos (mesmo horário)</option>
               <option value="max">Máximo de vezes por tipo</option>
               <option value="min_total">Mínimo de escalas no mês</option>
@@ -923,7 +924,7 @@ function uiR(){
   const ex=document.getElementById('rextra');
   document.getElementById('rpdiv').style.display=t==='livre'?'none':'';
   const td=[...db.homens,...db.mulheres];
-  if(t==='priorizar'||t==='evitar')ex.innerHTML=`<div class="sl">Culto</div><select id="rculto">${COPTS}</select>`;
+  if(t==='priorizar'||t==='evitar'||t==='nao_escalar')ex.innerHTML=`<div class="sl">Culto</div><select id="rculto">${COPTS}</select>`;
   else if(t==='juntos'||t==='separados')ex.innerHTML=`<div class="sl">${t==='juntos'?'Junto com':'Não escalar com'}</div><select id="rp2">${td.map(n=>`<option value="${e(n)}">${e(n)}</option>`).join('')}</select>`;
   else if(t==='max')ex.innerHTML=`<div class="g2"><div><div class="sl">Culto</div><select id="rculto">${COPTS}</select></div><div><div class="sl">Máximo</div><input type="number" id="rnum" min="1" max="8" value="1" style="max-width:90px"></div></div>`;
   else if(t==='min_total'||t==='max_total')ex.innerHTML=`<div class="sl">Quantidade no mês</div><input type="number" id="rnum" min="0" max="31" value="${t==='min_total'?2:5}" style="max-width:120px">`;
@@ -940,6 +941,7 @@ function addR(){
     const p=document.getElementById('rpess').value;if(!p)return;
     if(t==='priorizar')tx=`${p}: priorizar em ${CULTO_LB[document.getElementById('rculto').value]}`;
     else if(t==='evitar')tx=`${p}: evitar em ${CULTO_LB[document.getElementById('rculto').value]}`;
+    else if(t==='nao_escalar')tx=`${p}: não escalar em ${CULTO_LB[document.getElementById('rculto').value]}`;
     else if(t==='juntos'){const p2=document.getElementById('rp2').value;if(!p2||p2===p)return;tx=`${p} e ${p2}: manter juntos`;}
     else if(t==='separados'){const p2=document.getElementById('rp2').value;if(!p2||p2===p)return;tx=`${p} e ${p2}: não escalar juntos`;}
     else if(t==='max')tx=`${p}: máximo ${document.getElementById('rnum').value}x em ${CULTO_LB[document.getElementById('rculto').value]}`;
@@ -984,11 +986,13 @@ function gerarAuto(){
   if(!homens.length||!mulheres.length){gav.innerHTML+=`<div class="al er"><i class="ti ti-alert-circle"></i> Não há pessoas aptas suficientes após os bloqueios disciplinares.</div>`;return;}
 
   // ── Parsear regras ──
-  const evitar={}, priorizar={}, juntosLst=[], separadosLst=[], maxR={}, minTotal={}, maxTotal={}, intervalo={}, maxSeguido={}, indisponivel={};
+  const evitar={}, naoEscalar={}, priorizar={}, juntosLst=[], separadosLst=[], maxR={}, minTotal={}, maxTotal={}, intervalo={}, maxSeguido={}, indisponivel={};
   db.regras.forEach(r=>{
     let m;
     m=r.match(/^(.+?):\s*evitar em (.+)$/);
     if(m){const c=ckFromLabel(m[2]);if(c){if(!evitar[m[1]])evitar[m[1]]=[];evitar[m[1]].push(c);}}
+    m=r.match(/^(.+?):\s*não escalar em (.+)$/);
+    if(m){const c=ckFromLabel(m[2]);if(c){if(!naoEscalar[m[1]])naoEscalar[m[1]]=[];naoEscalar[m[1]].push(c);}}
     m=r.match(/^(.+?):\s*priorizar em (.+)$/);
     if(m){const c=ckFromLabel(m[2]);if(c){if(!priorizar[m[1]])priorizar[m[1]]=[];priorizar[m[1]].push(c);}}
     m=r.match(/^(.+?) e (.+?):\s*manter juntos$/);
@@ -1033,6 +1037,7 @@ function gerarAuto(){
   // pessoas com cargas próximas, impedindo que alguém fique sem escala
   // enquanto outros acumulam 2 ou 3 cultos a mais.
   function score(nome,tipo,diaKey){
+    if(naoEscalar[nome]?.includes(tipo)) return Infinity;
     if(indisponivel[nome]?.has(diaKey)) return Infinity;
     if(maxR[nome]?.[tipo]!==undefined && cnt[nome][tipo]>=maxR[nome][tipo]) return Infinity;
     if(maxTotal[nome]!==undefined && cnt[nome].total>=maxTotal[nome]) return Infinity;
@@ -2081,19 +2086,108 @@ function volRenderFuncoes(){
 }
 function volCheckGerar(){
   const el=document.getElementById('gav');el.innerHTML='';const erros=[];
+  const fun=db.funcoes||[];
   if(!db.homens.length&&!db.mulheres.length)erros.push('Adicione voluntários à equipe');
-  if(!(db.funcoes||[]).length)erros.push('Cadastre ao menos uma função');
+  if(!fun.length)erros.push('Cadastre ao menos uma função');
   if(!db.domingos.length&&!db.tercas.length&&!db.quintas.length)erros.push('Adicione as datas dos cultos');
+  const totalVagas=fun.reduce((tot,fn)=>tot+Object.values(fn.config||volCfgPadrao()).reduce((a,q)=>a+(Number(q?.h)||0)+(Number(q?.f)||0)+(Number(q?.i)||0),0),0);
+  if(fun.length && totalVagas===0)erros.push('Configure ao menos uma vaga em uma função/culto');
   if(erros.length)el.innerHTML=erros.map(x=>`<div class="al wn"><i class="ti ti-alert-triangle"></i> ${x}</div>`).join('');
+  return erros.length===0;
 }
 function volGerarAuto(){
-  volCheckGerar();if(document.querySelectorAll('#gav .al.wn').length)return;
-  const homens=[...db.homens],mulheres=[...db.mulheres],todos=[...homens,...mulheres];const cnt={};todos.forEach(n=>cnt[n]={total:0,dom_manha:0,dom_noite:0,terca:0,quinta:0});
-  const usadoDia={};function usado(d,n){return usadoDia[d]?.has(n)}function mark(d,n){(usadoDia[d]||(usadoDia[d]=new Set())).add(n)}
-  function pick(pool,n,tipo,dia,ex=new Set()){return pool.filter(x=>!ex.has(x)&&!usado(dia,x)&&!disciplinaBloqueiaNome(x)).sort((a,b)=>(cnt[a].total-cnt[b].total)||(cnt[a][tipo]-cnt[b][tipo])||a.localeCompare(b,'pt-BR')).slice(0,n)}
-  function bloco(tipo,dia){const fun=[];for(const fn of (db.funcoes||[])){const q=(fn.config||volCfgPadrao())[tipo]||{h:0,f:0,i:0};const ex=new Set();const hs=pick(homens,q.h||0,tipo,dia,ex);hs.forEach(x=>ex.add(x));const fs=pick(mulheres,q.f||0,tipo,dia,ex);fs.forEach(x=>ex.add(x));const rest=pick(todos,q.i||0,tipo,dia,ex);const nomes=[...hs,...fs,...rest];nomes.forEach(n=>{cnt[n].total++;cnt[n][tipo]++;mark(dia,n)});fun.push({nome:fn.nome,h:hs,f:fs,i:rest});}return{funcoes:fun};}
-  const semanas=[];const max=Math.max(db.domingos.length,db.tercas.length,db.quintas.length);for(let i=0;i<max;i++){const dom=db.domingos[i],ter=db.tercas[i],qui=db.quintas[i];semanas.push({domingo:dom?.data||'',so_manha:dom?.tipo==='manha',manha:dom?bloco('dom_manha',dom.data):null,noite:dom&&dom.tipo!=='manha'?bloco('dom_noite',dom.data):null,terca:ter?{data:ter,...bloco('terca',ter)}:null,quinta:qui?{data:qui,...bloco('quinta',qui)}:null});}
-  escala={mes:document.getElementById('cmes').value||'Mês',semanas,geradoEm:new Date().toLocaleString('pt-BR'),tipoEquipe:'voluntarios'};volRenderEscala(cnt);
+  if(!volCheckGerar())return;
+  try{
+    const homens=db.homens.filter(n=>!disciplinaBloqueiaNome(n));
+    const mulheres=db.mulheres.filter(n=>!disciplinaBloqueiaNome(n));
+    const todos=[...homens,...mulheres];
+    const cnt={};todos.forEach(n=>cnt[n]={total:0,dom_manha:0,dom_noite:0,terca:0,quinta:0});
+
+    // Regras dos voluntários. Usa o mesmo cadastro de regras, sem alterar o motor de Obreiros.
+    const evitar={},naoEscalar={},priorizar={},maxR={},minTotal={},maxTotal={},intervalo={},maxSeguido={},indisponivel={},juntosLst=[],separadosLst=[];
+    function ck(lb){return Object.keys(CULTO_LB).find(k=>CULTO_LB[k]===String(lb||'').trim())||null;}
+    (db.regras||[]).forEach(r=>{
+      let m;
+      m=r.match(/^(.+?):\s*evitar em (.+)$/);if(m){const c=ck(m[2]);if(c)(evitar[m[1].trim()]||(evitar[m[1].trim()]=[])).push(c);}
+      m=r.match(/^(.+?):\s*não escalar em (.+)$/);if(m){const c=ck(m[2]);if(c)(naoEscalar[m[1].trim()]||(naoEscalar[m[1].trim()]=[])).push(c);}
+      m=r.match(/^(.+?):\s*priorizar em (.+)$/);if(m){const c=ck(m[2]);if(c)(priorizar[m[1].trim()]||(priorizar[m[1].trim()]=[])).push(c);}
+      m=r.match(/^(.+?):\s*máximo (\d+)x em (.+)$/);if(m){const c=ck(m[3]);if(c){const n=m[1].trim();(maxR[n]||(maxR[n]={}))[c]=parseInt(m[2]);}}
+      m=r.match(/^(.+?):\s*mínimo (\d+) escalas no mês$/);if(m)minTotal[m[1].trim()]=parseInt(m[2]);
+      m=r.match(/^(.+?):\s*máximo (\d+) escalas no mês$/);if(m)maxTotal[m[1].trim()]=parseInt(m[2]);
+      m=r.match(/^(.+?):\s*descansar (\d+) cultos entre escalas$/);if(m)intervalo[m[1].trim()]=parseInt(m[2]);
+      m=r.match(/^(.+?):\s*máximo (\d+) vezes seguidas em (.+)$/);if(m){const c=ck(m[3]);if(c){const n=m[1].trim();(maxSeguido[n]||(maxSeguido[n]={}))[c]=parseInt(m[2]);}}
+      m=r.match(/^(.+?):\s*indisponível em (\d{2}\/\d{2})$/);if(m){const n=m[1].trim();(indisponivel[n]||(indisponivel[n]=new Set())).add(m[2]);}
+      m=r.match(/^(.+?) e (.+?):\s*manter juntos$/);if(m)juntosLst.push([m[1].trim(),m[2].trim()]);
+      m=r.match(/^(.+?) e (.+?):\s*não escalar juntos$/);if(m)separadosLst.push([m[1].trim(),m[2].trim()]);
+    });
+
+    const usadoDia={};
+    let eventoAtual=0;
+    const ultimoEvento={},ultimoTipo={},sequenciaTipo={};
+    todos.forEach(n=>{ultimoEvento[n]=-999;ultimoTipo[n]=null;sequenciaTipo[n]=0;});
+    function usado(d,n){return !!usadoDia[d]?.has(n);}
+    function mark(d,n){(usadoDia[d]||(usadoDia[d]=new Set())).add(n);}
+    function separa(nome,sel){return separadosLst.some(([a,b])=>(nome===a&&sel.includes(b))||(nome===b&&sel.includes(a)));}
+    function elegivel(nome,tipo,dia,sel=[]){
+      if(naoEscalar[nome]?.includes(tipo))return false;
+      if(indisponivel[nome]?.has(dia))return false;
+      if(maxR[nome]?.[tipo]!==undefined && cnt[nome][tipo]>=maxR[nome][tipo])return false;
+      if(maxTotal[nome]!==undefined && cnt[nome].total>=maxTotal[nome])return false;
+      if(intervalo[nome]!==undefined && (eventoAtual-ultimoEvento[nome]-1)<intervalo[nome])return false;
+      if(maxSeguido[nome]?.[tipo]!==undefined && ultimoTipo[nome]===tipo && sequenciaTipo[nome]>=maxSeguido[nome][tipo])return false;
+      if(usado(dia,nome)||separa(nome,sel))return false;
+      return true;
+    }
+    function score(nome,tipo){
+      let s=cnt[nome].total*10000+cnt[nome][tipo]*900;
+      if(minTotal[nome]!==undefined&&cnt[nome].total<minTotal[nome])s-=1800;
+      if(evitar[nome]?.includes(tipo))s+=250;
+      if(priorizar[nome]?.includes(tipo))s-=180;
+      if(ultimoTipo[nome]===tipo)s+=350*Math.max(1,sequenciaTipo[nome]);
+      return s;
+    }
+    function pick(pool,n,tipo,dia,ex=new Set(),selecionados=[]){
+      if(n<=0)return[];
+      return pool.filter(x=>!ex.has(x)&&elegivel(x,tipo,dia,selecionados))
+        .map(x=>({x,s:score(x,tipo)})).sort((a,b)=>a.s-b.s||a.x.localeCompare(b.x,'pt-BR')).slice(0,n).map(o=>o.x);
+    }
+    function registrar(nomes,tipo,dia){
+      nomes.forEach(n=>{cnt[n].total++;cnt[n][tipo]++;mark(dia,n);if(ultimoTipo[n]===tipo)sequenciaTipo[n]++;else sequenciaTipo[n]=1;ultimoTipo[n]=tipo;ultimoEvento[n]=eventoAtual;});
+    }
+    function bloco(tipo,dia){
+      eventoAtual++;
+      const fun=[];const selecionadosCulto=[];
+      for(const fn of (db.funcoes||[])){
+        const q=(fn.config||volCfgPadrao())[tipo]||{h:0,f:0,i:0};
+        const ex=new Set(selecionadosCulto);
+        const hs=pick(homens,Number(q.h)||0,tipo,dia,ex,selecionadosCulto);hs.forEach(x=>{ex.add(x);selecionadosCulto.push(x)});
+        const fs=pick(mulheres,Number(q.f)||0,tipo,dia,ex,selecionadosCulto);fs.forEach(x=>{ex.add(x);selecionadosCulto.push(x)});
+        const rest=pick(todos,Number(q.i)||0,tipo,dia,ex,selecionadosCulto);rest.forEach(x=>selecionadosCulto.push(x));
+        const nomes=[...hs,...fs,...rest];
+        registrar(nomes,tipo,dia);
+        fun.push({nome:fn.nome,h:hs,f:fs,i:rest,esperado:{h:Number(q.h)||0,f:Number(q.f)||0,i:Number(q.i)||0}});
+      }
+      return{funcoes:fun};
+    }
+
+    const semanas=[];
+    const max=Math.max(db.domingos.length,db.tercas.length,db.quintas.length);
+    for(let i=0;i<max;i++){
+      const dom=db.domingos[i],ter=db.tercas[i],qui=db.quintas[i];
+      semanas.push({domingo:dom?.data||'',so_manha:dom?.tipo==='manha',
+        manha:dom?bloco('dom_manha',dom.data):null,
+        noite:dom&&dom.tipo!=='manha'?bloco('dom_noite',dom.data):null,
+        terca:ter?{data:ter,...bloco('terca',ter)}:null,
+        quinta:qui?{data:qui,...bloco('quinta',qui)}:null});
+    }
+    escala={mes:document.getElementById('cmes').value||'Mês',semanas,geradoEm:new Date().toLocaleString('pt-BR'),tipoEquipe:'voluntarios'};
+    volRenderEscala(cnt);
+  }catch(err){
+    console.error('Erro ao gerar escala de voluntários:',err);
+    const el=document.getElementById('gav');
+    if(el)el.innerHTML=`<div class="al er"><i class="ti ti-alert-circle"></i> Não foi possível gerar a escala de voluntários. ${e(err?.message||'Revise funções e quantidades configuradas.')}</div>`;
+    toast('Erro ao gerar escala de voluntários.','er');
+  }
 }
 function volBlocoHtml(titulo,b){if(!b)return'';return `<div class="cb"><div class="cl">${titulo}</div>${(b.funcoes||[]).map(fn=>`<div class="vol-block"><div class="vol-block-h">${e(fn.nome)}</div><div class="vol-func"><div class="vol-names">${fn.h.map(n=>`<span class="np bm">♂ ${e(n)}</span>`).join('')}${fn.f.map(n=>`<span class="np bf">♀ ${e(n)}</span>`).join('')}${fn.i.map(n=>`<span class="np">${e(n)}</span>`).join('')||'<span style="font-size:11px;color:#aaa">Sem vagas configuradas</span>'}</div></div></div>`).join('')}</div>`}
 function volEscalaHtml(esc){return esc.semanas.map(s=>{const partes=[];if(s.terca)partes.push(volBlocoHtml('Terça – '+s.terca.data,s.terca));if(s.quinta)partes.push(volBlocoHtml('Quinta – '+s.quinta.data,s.quinta));if(s.manha)partes.push(volBlocoHtml('Domingo '+s.domingo+' – Manhã',s.manha));if(s.noite)partes.push(volBlocoHtml('Domingo '+s.domingo+' – Noite',s.noite));return partes.join('')?`<div class="sk">${partes.join('')}</div>`:''}).join('')}
